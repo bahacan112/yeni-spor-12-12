@@ -1,0 +1,106 @@
+# ─────────────────────────────────────────────────────────────
+# NODE / NEXT.JS TEMEL İGNORES
+# ─────────────────────────────────────────────────────────────
+
+node_modules/
+.npm/
+.pnp/
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+dist/
+build/
+
+# Next.js cache
+.next/cache/
+.next/static/chunks/
+
+# Turbopack / SWC Cache
+.swc/
+.turbo/
+
+# ─────────────────────────────────────────────────────────────
+# ENV DOSYALARI (Kesinlikle Git'e koyma!)
+# ─────────────────────────────────────────────────────────────
+
+.env
+.env.*
+!.env.example
+*.local
+
+# ─────────────────────────────────────────────────────────────
+# LOG DOSYALARI
+# ─────────────────────────────────────────────────────────────
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+debug.log
+logs/
+*.log
+
+# ─────────────────────────────────────────────────────────────
+# LOCK DOSYALARI (paket yöneticin hariç tutulabilir)
+# Eğer tek lock file kullanıyorsan diğerlerini ignore et.
+# ─────────────────────────────────────────────────────────────
+
+# yarn.lock
+# package-lock.json
+# pnpm-lock.yaml
+*.lock
+
+# ─────────────────────────────────────────────────────────────
+# OS / EDITOR ARTEFACTS
+# ─────────────────────────────────────────────────────────────
+
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# VSCode settings (permission-based)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ─────────────────────────────────────────────────────────────
+# TEST / COVERAGE
+# ─────────────────────────────────────────────────────────────
+
+coverage/
+*.lcov
+jest-html-reporters-*.html
+jest-stare/
+.nyc_output/
+
+# ─────────────────────────────────────────────────────────────
+# TYPESCRIPT OUTPUT
+# ─────────────────────────────────────────────────────────────
+
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# ─────────────────────────────────────────────────────────────
+# IMAGES & OPTIMIZATION TEMP FILES
+# ─────────────────────────────────────────────────────────────
+
+public/_next/
+public/*.map
+
+# Generated images / cache
+.cache/
+cache/
+/scripts
+# ─────────────────────────────────────────────────────────────
+# DOCKER
+# ─────────────────────────────────────────────────────────────
+
+docker-data/
+*.pid
