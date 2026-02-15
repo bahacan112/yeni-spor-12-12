@@ -6,6 +6,7 @@ import { TodayTrainings } from "@/components/dashboard/today-trainings";
 import { PendingPayments } from "@/components/dashboard/pending-payments";
 import { RecentApplications } from "@/components/dashboard/recent-applications";
 import { getDashboardData } from "@/lib/api/dashboard";
+import { getSetupStatus } from "@/lib/api/setup";
 import {
   StatsCardsSkeleton,
   RecentActivitySkeleton,
@@ -26,6 +27,11 @@ export default async function DashboardPage({
   // If tenantSlug is 'admin', redirect to admin dashboard
   if (data.tenantSlug === "admin") {
     redirect("/admin");
+  }
+
+  const setup = await getSetupStatus();
+  if (!setup.isComplete) {
+    redirect("/dashboard/setup");
   }
 
   return (

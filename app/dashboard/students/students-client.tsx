@@ -141,6 +141,47 @@ export function StudentsClient({
     setIsSubmitting(true);
 
     try {
+      const { data: tenantRow } = await supabase
+        .from("tenants")
+        .select("subscription_status, is_limited, max_students")
+        .eq("id", tenantId)
+        .single();
+
+      const { count: studentCount } = await supabase
+        .from("students")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId);
+      const { data: activeSub } = await supabase
+        .from("tenant_subscriptions")
+        .select("status, plan:platform_plans(max_students)")
+        .eq("tenant_id", tenantId)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+
+      const isLimited = Boolean(tenantRow?.is_limited);
+      const subStatus = String(tenantRow?.subscription_status || "active");
+      const configuredMax = Number(tenantRow?.max_students ?? 0) || 0;
+      const planMax = Number((activeSub as any)?.plan?.max_students ?? 0) || 0;
+      let allowedMax = configuredMax;
+      if (!isLimited && subStatus === "active") {
+        allowedMax = configuredMax || planMax || Number.POSITIVE_INFINITY;
+      }
+      if (isLimited || subStatus !== "active") {
+        // When limited or expired, a missing max implies 0
+        allowedMax = configuredMax || 0;
+      }
+      if (
+        studentCount !== null &&
+        allowedMax !== Number.POSITIVE_INFINITY &&
+        (studentCount || 0) >= allowedMax
+      ) {
+        toast.error(
+          "Öğrenci limiti aşıldı. Paket veya abonelik sürenizi güncelleyin."
+        );
+        setIsSubmitting(false);
+        return;
+      }
       // 1. Insert student
       const { data: student, error: studentError } = await supabase
         .from("students")
@@ -611,6 +652,15 @@ export function StudentsClient({
                       {getStatusBadge(student.status)}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {(() => {
+                        const b = branches.find(
+                          (br) => br.id === student.branchId
+                        );
+                        return b ? <span>{b.name}</span> : null;
+                      })()}
+                      {branches.find((br) => br.id === student.branchId) && (
+                        <span>•</span>
+                      )}
                       {student.studentNo && <span>#{student.studentNo}</span>}
                       {student.phone && (
                         <>

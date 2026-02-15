@@ -30,8 +30,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Link from "next/link"
 import { Tenant, TenantSubscription, PlatformPlan } from "@/lib/types"
+import { toast } from "sonner"
 
 interface SchoolsClientProps {
   tenants: Tenant[]
@@ -44,6 +46,11 @@ export function SchoolsClient({ tenants, subscriptions, plans }: SchoolsClientPr
   const [statusFilter, setStatusFilter] = useState("all")
   const [planFilter, setPlanFilter] = useState("all")
   const [isNewSchoolOpen, setIsNewSchoolOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [targetTenant, setTargetTenant] = useState<Tenant | null>(null)
+  const [confirmName, setConfirmName] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [deleting, setDeleting] = useState(false)
 
   const filteredTenants = tenants.filter((tenant) => {
     const matchesSearch =
@@ -301,12 +308,20 @@ export function SchoolsClient({ tenants, subscriptions, plans }: SchoolsClientPr
                             E-posta Gönder
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-slate-700" />
-                            <DropdownMenuItem className="text-red-400 focus:bg-slate-700 focus:text-red-400">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Sil
+                            <DropdownMenuItem
+                              className="text-red-400 focus:bg-slate-700 focus:text-red-400"
+                              onClick={() => {
+                                setTargetTenant(tenant)
+                                setConfirmName("")
+                                setConfirmPassword("")
+                                setDeleteOpen(true)
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Sil
                             </DropdownMenuItem>
-                        </DropdownMenuContent>
-                        </DropdownMenu>
+                          </DropdownMenuContent>
+                          </DropdownMenu>
                     </div>
                     </div>
                 </CardContent>
@@ -315,6 +330,77 @@ export function SchoolsClient({ tenants, subscriptions, plans }: SchoolsClientPr
             })
         )}
       </div>
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">Okulu Sil</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Onay için okul adını ve şifrenizi girin
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label className="text-slate-300">Okul Adı</Label>
+              <Input
+                value={confirmName}
+                onChange={(e) => setConfirmName(e.target.value)}
+                placeholder={targetTenant?.name || ""}
+                className="border-slate-700 bg-slate-800 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">Admin Şifre</Label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="border-slate-700 bg-slate-800 text-white"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              className="border-slate-700 text-slate-300 bg-transparent"
+              disabled={deleting}
+            >
+              İptal
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting || !targetTenant || !confirmName.trim() || !confirmPassword.trim()}
+              onClick={async () => {
+                if (!targetTenant) return
+                setDeleting(true)
+                const res = await fetch("/api/admin/tenants/delete", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    tenantId: targetTenant.id,
+                    schoolName: confirmName,
+                    password: confirmPassword,
+                  }),
+                })
+                setDeleting(false)
+                if (res.ok) {
+                  setDeleteOpen(false)
+                  location.reload()
+                } else {
+                  let msg = "Silme işlemi başarısız"
+                  try {
+                    const data = await res.json()
+                    msg = String(data?.error || msg)
+                  } catch {}
+                  toast.error(msg)
+                }
+              }}
+            >
+              {deleting ? "Siliniyor..." : "Onayla ve Sil"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

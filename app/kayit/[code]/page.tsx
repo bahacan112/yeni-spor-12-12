@@ -26,6 +26,7 @@ export default function PublicRegistrationPage() {
   const [step, setStep] = useState(1)
   const [selectedSport, setSelectedSport] = useState("")
   const [submitted, setSubmitted] = useState(false)
+  const [sportsData, setSportsData] = useState<Array<{ id: string; name: string }>>([])
 
   const [form, setForm] = useState({
     fullName: "",
@@ -71,6 +72,18 @@ export default function PublicRegistrationPage() {
         .eq("id", rl.tenant_id)
         .single()
       setTenant(t)
+      try {
+        const { data: sports } = await supabase
+          .from("sports")
+          .select("id,name")
+          .eq("tenant_id", rl.tenant_id)
+          .eq("is_active", true)
+          .order("sort_order")
+          .order("name")
+        setSportsData(
+          (sports || []).map((s: any) => ({ id: String(s.id), name: String(s.name) }))
+        )
+      } catch {}
       setLoading(false)
     }
     fetchData()
@@ -83,6 +96,7 @@ export default function PublicRegistrationPage() {
       tenant_id: link.tenant_id,
       branch_id: link.branch_id || null,
       registration_link_id: link.id,
+      sport_id: selectedSport || null,
       full_name: form.fullName,
       birth_date: form.birthDate || null,
       phone: form.phone || null,
@@ -182,24 +196,24 @@ export default function PublicRegistrationPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {["Basketbol", "Yüzme", "Futbol", "Tenis"].map((name) => (
+                  {sportsData.map((sport) => (
                     <Card
-                      key={name}
+                      key={sport.id}
                       className={`cursor-pointer transition-colors ${
-                        selectedSport === name ? "border-primary bg-primary/5" : "bg-card/50 border-border/50 hover:bg-card/80"
+                        selectedSport === sport.id ? "border-primary bg-primary/5" : "bg-card/50 border-border/50 hover:bg-card/80"
                       }`}
-                      onClick={() => setSelectedSport(name)}
+                      onClick={() => setSelectedSport(sport.id)}
                     >
                       <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{name}</p>
+                          <p className="font-medium">{sport.name}</p>
                         </div>
                         <div
                           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            selectedSport === name ? "border-primary bg-primary" : "border-muted-foreground"
+                            selectedSport === sport.id ? "border-primary bg-primary" : "border-muted-foreground"
                           }`}
                         >
-                          {selectedSport === name && <Check className="h-3 w-3 text-primary-foreground" />}
+                          {selectedSport === sport.id && <Check className="h-3 w-3 text-primary-foreground" />}
                         </div>
                       </CardContent>
                     </Card>

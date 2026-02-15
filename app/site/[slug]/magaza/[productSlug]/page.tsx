@@ -1,5 +1,6 @@
-import { headers } from "next/headers";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ProductDetail from "@/components/site/product-detail";
 import { getPublicWebsiteData } from "@/lib/api/public-website";
@@ -10,21 +11,32 @@ export default async function ProductPage({
   params: Promise<{ slug: string; productSlug: string }>;
 }) {
   const { slug, productSlug } = await params;
+  const { tenant, aboutPage, branchesPage, contactPage } =
+    await getPublicWebsiteData(slug);
   const hdrs = await headers();
   const host = hdrs.get("host") || "localhost:3000";
   const protocol = process.env.VERCEL ? "https" : "http";
   const base = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${host}`;
-  const apiUrl = `${base}/api/public/site/${encodeURIComponent(
-    slug
-  )}/products/${encodeURIComponent(productSlug)}`;
-  const res = await fetch(apiUrl, {
-    cache: "no-store",
-    next: { revalidate: 0 },
-  });
-  if (!res.ok) throw new Error("Ürün bulunamadı");
-  const { product } = (await res.json()) as { product: any };
-  const { tenant, aboutPage, branchesPage, contactPage } =
-    await getPublicWebsiteData(slug);
+
+  let product: any = null;
+  let fetchError: string | null = null;
+  try {
+    const res = await fetch(
+      `${base}/api/public/site/${encodeURIComponent(
+        slug
+      )}/products/${encodeURIComponent(productSlug)}`,
+      { cache: "no-store", next: { revalidate: 0 } }
+    );
+    if (res.ok) {
+      const json = (await res.json()) as { product: any };
+      product = json.product;
+    } else {
+      fetchError = "Ürün bulunamadı";
+    }
+  } catch {
+    fetchError = "Ürün bulunamadı";
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
@@ -76,8 +88,40 @@ export default async function ProductPage({
           </Button>
         </div>
       </header>
+
       <div className="container mx-auto px-4 py-10">
-        <ProductDetail product={product} slug={slug} />
+        <div className="flex items-center justify-between mb-6">
+          <Link
+            href={`/site/${slug}/magaza`}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Mağazaya Dön
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button asChild>
+              <Link href={`/site/${slug}/sepet`}>Sepet</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/site/${slug}/siparisler`}>Siparişler</Link>
+            </Button>
+          </div>
+        </div>
+
+        {fetchError ? (
+          <Card className="bg-card/50 border-border/50">
+            <CardContent className="p-4">
+              <p className="text-destructive">{fetchError}</p>
+            </CardContent>
+          </Card>
+        ) : !product ? (
+          <Card className="bg-card/50 border-border/50">
+            <CardContent className="p-4">
+              <p className="text-muted-foreground">Yükleniyor...</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <ProductDetail product={product} slug={slug} />
+        )}
       </div>
     </div>
   );

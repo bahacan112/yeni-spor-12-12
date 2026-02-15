@@ -27,24 +27,42 @@ interface UsersClientProps {
 const roleColors: Record<string, string> = {
   super_admin: "bg-red-500/10 text-red-500",
   support: "bg-blue-500/10 text-blue-500",
+  tenant_admin: "bg-emerald-500/10 text-emerald-500",
+  branch_manager: "bg-amber-500/10 text-amber-500",
+  instructor: "bg-purple-500/10 text-purple-500",
+  student: "bg-slate-500/10 text-slate-500",
 }
 
 const roleLabels: Record<string, string> = {
   super_admin: "Super Admin",
   support: "Destek",
+  tenant_admin: "Tenant Admin",
+  branch_manager: "Şube Yöneticisi",
+  instructor: "Eğitmen",
+  student: "Öğrenci",
 }
 
 export default function UsersClient({ initialUsers }: UsersClientProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  
-  // Note: Since this is just a client-side filter, it doesn't do real search.
-  // In a real app we'd likely want server-side search.
-  const filteredUsers = initialUsers.filter(
+  const [users, setUsers] = useState<User[]>(initialUsers)
+
+  const filteredUsers = users.filter(
     (user) =>
       user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()),
   )
+
+  async function patchUser(id: string, payload: Partial<{ role: User["role"]; isActive: boolean }>) {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) return
+    const updated = (await res.json()) as User
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role: updated.role, isActive: updated.isActive } : u)))
+  }
 
   return (
     <div className="space-y-6">
@@ -147,6 +165,19 @@ export default function UsersClient({ initialUsers }: UsersClientProps) {
                     <Shield className="mr-1 h-3 w-3" />
                     {roleLabels[user.role] || user.role}
                   </Badge>
+                  <Select value={user.role} onValueChange={(val) => patchUser(user.id, { role: val as User["role"] })}>
+                    <SelectTrigger className="h-8 bg-slate-800 border-slate-700 text-white w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                      <SelectItem value="support">Destek</SelectItem>
+                      <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
+                      <SelectItem value="branch_manager">Şube Yöneticisi</SelectItem>
+                      <SelectItem value="instructor">Eğitmen</SelectItem>
+                      <SelectItem value="student">Öğrenci</SelectItem>
+                    </SelectContent>
+                  </Select>
                   {user.lastLoginAt && (
                     <span className="text-xs text-slate-500">
                         Son giriş: {new Date(user.lastLoginAt).toLocaleDateString("tr-TR")}
@@ -172,12 +203,12 @@ export default function UsersClient({ initialUsers }: UsersClientProps) {
                   E-posta Gönder
                 </DropdownMenuItem>
                 {user.isActive ? (
-                  <DropdownMenuItem className="text-red-400 focus:bg-slate-700">
+                  <DropdownMenuItem className="text-red-400 focus:bg-slate-700" onClick={() => patchUser(user.id, { isActive: false })}>
                     <UserX className="mr-2 h-4 w-4" />
                     Pasif Yap
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem className="text-green-400 focus:bg-slate-700">
+                  <DropdownMenuItem className="text-green-400 focus:bg-slate-700" onClick={() => patchUser(user.id, { isActive: true })}>
                     <UserCheck className="mr-2 h-4 w-4" />
                     Aktif Yap
                   </DropdownMenuItem>

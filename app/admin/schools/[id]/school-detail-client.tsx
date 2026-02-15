@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   ArrowLeft,
   Building,
@@ -20,23 +20,23 @@ import {
   RefreshCw,
   TrendingUp,
   MapPin,
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -44,26 +44,60 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import Link from "next/link"
-import { PlatformPlan } from "@/lib/types"
+} from "@/components/ui/dialog";
+import Link from "next/link";
+import { PlatformPlan } from "@/lib/types";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
 
 // We can define the props type based on what getTenantDetails returns
 interface SchoolDetailClientProps {
-  tenant: any // Using any for simplicity as it's a composite object
-  plans: PlatformPlan[]
+  tenant: any; // Using any for simplicity as it's a composite object
+  plans: PlatformPlan[];
 }
 
-export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClientProps) {
-  const [isLimited, setIsLimited] = useState(tenant.isLimited)
-  const [maxStudents, setMaxStudents] = useState(tenant.maxStudents)
-  const [maxGroups, setMaxGroups] = useState(tenant.maxGroups)
-  const [showExtendDialog, setShowExtendDialog] = useState(false)
-  const [showMessageDialog, setShowMessageDialog] = useState(false)
-  
+export default function SchoolDetailClient({
+  tenant,
+  plans,
+}: SchoolDetailClientProps) {
+  const [isLimited, setIsLimited] = useState(tenant.isLimited);
+  const [maxStudents, setMaxStudents] = useState(tenant.maxStudents);
+  const [maxGroups, setMaxGroups] = useState(tenant.maxGroups);
+  const [showExtendDialog, setShowExtendDialog] = useState(false);
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [messageChannel, setMessageChannel] = useState<string>("email");
+  const [messageSubject, setMessageSubject] = useState<string>("");
+  const [messageBody, setMessageBody] = useState<string>("");
+  const [sending, setSending] = useState(false);
+  const [savingLimits, setSavingLimits] = useState(false);
+  const [websiteEnabled, setWebsiteEnabled] = useState<boolean>(
+    Boolean(tenant.websiteEnabled)
+  );
+  const [ecommerceEnabled, setEcommerceEnabled] = useState<boolean>(
+    Boolean(tenant.ecommerceEnabled)
+  );
+  const [editName, setEditName] = useState<string>(String(tenant.name || ""));
+  const [editEmail, setEditEmail] = useState<string>(
+    String(tenant.email || "")
+  );
+  const [editPhone, setEditPhone] = useState<string>(
+    String(tenant.phone || "")
+  );
+  const [editAddress, setEditAddress] = useState<string>(
+    String(tenant.address || "")
+  );
+  const [extendPeriod, setExtendPeriod] = useState<string>("1month");
+  const [updatingAutoRenew, setUpdatingAutoRenew] = useState(false);
+  const [suspending, setSuspending] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
   // Derived data
-  const subscription = tenant.subscription
-  const payments = tenant.payments || []
+  const subscription = tenant.subscription;
+  const payments = tenant.payments || [];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -73,24 +107,103 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
             <CheckCircle className="mr-1 h-3 w-3" />
             Aktif
           </Badge>
-        )
+        );
       case "expired":
         return (
           <Badge className="bg-red-500/20 text-red-400">
             <AlertTriangle className="mr-1 h-3 w-3" />
             Süresi Dolmuş
           </Badge>
-        )
+        );
       case "inactive":
         return (
           <Badge className="bg-slate-500/20 text-slate-400">
             <Ban className="mr-1 h-3 w-3" />
             Pasif
           </Badge>
-        )
+        );
       default:
-        return null
+        return null;
     }
+  };
+
+  function TrialStartForm({
+    tenantId,
+    plans,
+  }: {
+    tenantId: string;
+    plans: PlatformPlan[];
+  }) {
+    const [planId, setPlanId] = useState<string>("");
+    const [days, setDays] = useState<string>("");
+    const [saving, setSaving] = useState(false);
+    const eligiblePlans = plans.filter((p) => Boolean(p.trialEnabled));
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-slate-300">Paket Seç</Label>
+          <Select
+            onValueChange={(val) => {
+              setPlanId(val);
+              const selected = eligiblePlans.find((p) => p.id === val);
+              const defDays = selected?.trialDefaultDays ?? undefined;
+              setDays(defDays ? String(defDays) : "");
+            }}
+          >
+            <SelectTrigger className="border-slate-700 bg-slate-800 text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-slate-700 bg-slate-800">
+              {eligiblePlans.length === 0 ? (
+                <div className="p-3 text-slate-400">
+                  Trial açılabilir paket yok
+                </div>
+              ) : (
+                eligiblePlans.map((p) => (
+                  <SelectItem key={p.id} value={p.id} className="text-white">
+                    {p.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-slate-300">Trial Gün</Label>
+          <Input
+            type="number"
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+            placeholder="Örn: 14"
+            className="border-slate-700 bg-slate-800 text-white"
+          />
+        </div>
+        <Button
+          className="w-full bg-blue-600 hover:bg-blue-700"
+          disabled={!planId || saving}
+          onClick={async () => {
+            if (!planId) return;
+            setSaving(true);
+            const res = await fetch("/api/admin/subscriptions/trial", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                tenantId,
+                planId,
+                trialDays: days ? Number(days) : undefined,
+              }),
+            });
+            setSaving(false);
+            if (res.ok) {
+              location.reload();
+            }
+          }}
+        >
+          {saving ? <Spinner className="mr-2" /> : null}
+          {saving ? "Başlatılıyor" : "Trial Başlat"}
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -107,9 +220,9 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
             <Avatar className="h-12 w-12">
               <AvatarFallback
                 className="text-white"
-                style={{ backgroundColor: tenant.primaryColor || '#64748b' }}
+                style={{ backgroundColor: tenant.primaryColor || "#64748b" }}
               >
-                {tenant.name?.substring(0, 2).toUpperCase() || '??'}
+                {tenant.name?.substring(0, 2).toUpperCase() || "??"}
               </AvatarFallback>
             </Avatar>
             <div>
@@ -144,7 +257,10 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-slate-300">Gönderim Tipi</Label>
-                  <Select defaultValue="email">
+                  <Select
+                    value={messageChannel}
+                    onValueChange={setMessageChannel}
+                  >
                     <SelectTrigger className="border-slate-700 bg-slate-800 text-white">
                       <SelectValue />
                     </SelectTrigger>
@@ -169,6 +285,8 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                   <Input
                     placeholder="Mesaj konusu"
                     className="border-slate-700 bg-slate-800 text-white"
+                    value={messageSubject}
+                    onChange={(e) => setMessageSubject(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
@@ -176,18 +294,116 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                   <Textarea
                     placeholder="Mesajınızı yazın..."
                     className="min-h-[120px] border-slate-700 bg-slate-800 text-white"
+                    value={messageBody}
+                    onChange={(e) => setMessageBody(e.target.value)}
                   />
                 </div>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                  Gönder
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={sending || !messageBody.trim()}
+                  onClick={async () => {
+                    setSending(true);
+                    try {
+                      const res = await fetch("/api/admin/tenants/message", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          tenantId: tenant.id,
+                          channel: messageChannel,
+                          subject: messageSubject,
+                          content: messageBody,
+                        }),
+                      });
+                      if (res.ok) {
+                        setShowMessageDialog(false);
+                        setMessageSubject("");
+                        setMessageBody("");
+                      }
+                    } finally {
+                      setSending(false);
+                    }
+                  }}
+                >
+                  {sending ? <Spinner className="mr-2" /> : null}
+                  {sending ? "Gönderiliyor" : "Gönder"}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Edit className="mr-2 h-4 w-4" />
-            Düzenle
-          </Button>
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Edit className="mr-2 h-4 w-4" />
+                Düzenle
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="text-white">
+                  Okul Bilgilerini Düzenle
+                </DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Temel alanları güncelleyin
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Okul Adı</Label>
+                  <Input
+                    className="border-slate-700 bg-slate-800 text-white"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">E-posta</Label>
+                  <Input
+                    className="border-slate-700 bg-slate-800 text-white"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Telefon</Label>
+                  <Input
+                    className="border-slate-700 bg-slate-800 text-white"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Adres</Label>
+                  <Textarea
+                    className="border-slate-700 bg-slate-800 text-white"
+                    value={editAddress}
+                    onChange={(e) => setEditAddress(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 w-full"
+                    onClick={async () => {
+                      await fetch("/api/admin/tenants/update", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          tenantId: tenant.id,
+                          name: editName,
+                          email: editEmail,
+                          phone: editPhone,
+                          address: editAddress,
+                        }),
+                      });
+                      setShowEditDialog(false);
+                      location.reload();
+                    }}
+                  >
+                    Kaydet
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -383,7 +599,10 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                           <Label className="text-slate-300">
                             Uzatma Süresi
                           </Label>
-                          <Select defaultValue="1month">
+                          <Select
+                            value={extendPeriod}
+                            onValueChange={setExtendPeriod}
+                          >
                             <SelectTrigger className="border-slate-700 bg-slate-800 text-white">
                               <SelectValue />
                             </SelectTrigger>
@@ -416,7 +635,33 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                             className="border-slate-700 bg-slate-800 text-white"
                           />
                         </div>
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                        <Button
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          onClick={async () => {
+                            const map: Record<string, number> = {
+                              "1month": 1,
+                              "3months": 3,
+                              "6months": 6,
+                              "1year": 12,
+                            };
+                            const months = map[extendPeriod] || 1;
+                            const res = await fetch(
+                              "/api/admin/subscriptions/extend",
+                              {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  tenantId: tenant.id,
+                                  months,
+                                }),
+                              }
+                            );
+                            if (res.ok) {
+                              setShowExtendDialog(false);
+                              location.reload();
+                            }
+                          }}
+                        >
                           Süreyi Uzat
                         </Button>
                       </div>
@@ -557,7 +802,27 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                             <li>Max {plan.maxInstructors || 5} eğitmen</li>
                           </ul>
                           {subscription.planId !== plan.id && (
-                            <Button className="mt-4 w-full bg-slate-700 hover:bg-slate-600">
+                            <Button
+                              className="mt-4 w-full bg-slate-700 hover:bg-slate-600"
+                              onClick={async () => {
+                                const res = await fetch(
+                                  "/api/admin/subscriptions/change-plan",
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      tenantId: tenant.id,
+                                      planId: plan.id,
+                                    }),
+                                  }
+                                );
+                                if (res.ok) {
+                                  location.reload();
+                                }
+                              }}
+                            >
                               Geçiş Yap
                             </Button>
                           )}
@@ -569,9 +834,35 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
             </>
           ) : (
             <Card className="border-slate-800 bg-slate-900">
-                <CardContent className="p-8 text-center">
-                    <p className="text-slate-400">Bu okulun aktif aboneliği bulunmamaktadır.</p>
-                </CardContent>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg text-white">
+                  Abonelik Yok
+                </CardTitle>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="bg-blue-600 hover:bg-blue-700">
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Trial Başlat
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">
+                        Deneme (Trial) Başlat
+                      </DialogTitle>
+                      <DialogDescription className="text-slate-400">
+                        Paket ve süre seçerek deneme aboneliği başlatın
+                      </DialogDescription>
+                    </DialogHeader>
+                    <TrialStartForm tenantId={tenant.id} plans={plans} />
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-slate-400">
+                  Bu okul için aktif abonelik bulunmuyor.
+                </p>
+              </CardContent>
             </Card>
           )}
         </TabsContent>
@@ -621,8 +912,26 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                       />
                     </div>
                   </div>
-                  <Button className="bg-amber-600 hover:bg-amber-700">
-                    Limitleri Kaydet
+                  <Button
+                    className="bg-amber-600 hover:bg-amber-700"
+                    disabled={savingLimits}
+                    onClick={async () => {
+                      setSavingLimits(true);
+                      await fetch("/api/admin/tenants/update", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          tenantId: tenant.id,
+                          isLimited,
+                          maxStudents,
+                          maxGroups,
+                        }),
+                      });
+                      setSavingLimits(false);
+                    }}
+                  >
+                    {savingLimits ? <Spinner className="mr-2" /> : null}
+                    {savingLimits ? "Kaydediliyor" : "Limitleri Kaydet"}
                   </Button>
                 </div>
               )}
@@ -753,7 +1062,20 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                     Okul web sitesini aktif/pasif yap
                   </p>
                 </div>
-                <Switch defaultChecked={tenant.websiteEnabled} />
+                <Switch
+                  checked={websiteEnabled}
+                  onCheckedChange={async (checked) => {
+                    setWebsiteEnabled(checked);
+                    await fetch("/api/admin/tenants/update", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        tenantId: tenant.id,
+                        websiteEnabled: checked,
+                      }),
+                    });
+                  }}
+                />
               </div>
               <div className="flex items-center justify-between rounded-lg bg-slate-800/50 p-4">
                 <div>
@@ -762,7 +1084,20 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                     Online mağaza özelliğini aktif/pasif yap
                   </p>
                 </div>
-                <Switch defaultChecked={tenant.ecommerceEnabled} />
+                <Switch
+                  checked={ecommerceEnabled}
+                  onCheckedChange={async (checked) => {
+                    setEcommerceEnabled(checked);
+                    await fetch("/api/admin/tenants/update", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        tenantId: tenant.id,
+                        ecommerceEnabled: checked,
+                      }),
+                    });
+                  }}
+                />
               </div>
               <div className="flex items-center justify-between rounded-lg bg-slate-800/50 p-4">
                 <div>
@@ -771,7 +1106,21 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                     Abonelik otomatik yenilensin
                   </p>
                 </div>
-                <Switch defaultChecked={subscription?.autoRenew} />
+                <Switch
+                  checked={Boolean(subscription?.autoRenew)}
+                  onCheckedChange={async (checked) => {
+                    setUpdatingAutoRenew(true);
+                    await fetch("/api/admin/subscriptions/update", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        tenantId: tenant.id,
+                        autoRenew: checked,
+                      }),
+                    });
+                    setUpdatingAutoRenew(false);
+                  }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -793,9 +1142,26 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                 <Button
                   variant="outline"
                   className="border-amber-500 text-amber-500 hover:bg-amber-500/10 bg-transparent"
+                  onClick={async () => {
+                    setSuspending(true);
+                    await fetch("/api/admin/tenants/suspend", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        tenantId: tenant.id,
+                        suspend: tenant.subscriptionStatus === "active",
+                      }),
+                    });
+                    setSuspending(false);
+                    location.reload();
+                  }}
                 >
                   <Ban className="mr-2 h-4 w-4" />
-                  Askıya Al
+                  {suspending
+                    ? "İşleniyor"
+                    : tenant.subscriptionStatus === "active"
+                    ? "Askıya Al"
+                    : "Aktif Et"}
                 </Button>
               </div>
               <div className="flex items-center justify-between rounded-lg bg-red-500/5 p-4">
@@ -805,10 +1171,90 @@ export default function SchoolDetailClient({ tenant, plans }: SchoolDetailClient
                     Bu işlem geri alınamaz
                   </p>
                 </div>
-                <Button variant="destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Sil
-                </Button>
+                <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Sil
+                  </Button>
+                  <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">
+                        Okulu Sil
+                      </DialogTitle>
+                      <DialogDescription className="text-slate-400">
+                        Onay için okul adını ve şifrenizi girin
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label className="text-slate-300">Okul Adı</Label>
+                        <Input
+                          value={confirmName}
+                          onChange={(e) => setConfirmName(e.target.value)}
+                          placeholder={tenant.name}
+                          className="border-slate-700 bg-slate-800 text-white"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-slate-300">Admin Şifre</Label>
+                        <Input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="border-slate-700 bg-slate-800 text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setDeleteOpen(false)}
+                        className="border-slate-700 text-slate-300 bg-transparent"
+                        disabled={deleting}
+                      >
+                        İptal
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        disabled={
+                          deleting ||
+                          !confirmName.trim() ||
+                          !confirmPassword.trim()
+                        }
+                        onClick={async () => {
+                          setDeleting(true);
+                          const res = await fetch("/api/admin/tenants/delete", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              tenantId: tenant.id,
+                              schoolName: confirmName,
+                              password: confirmPassword,
+                            }),
+                          });
+                          setDeleting(false);
+                          if (res.ok) {
+                            setDeleteOpen(false);
+                            location.href = "/admin/schools";
+                          } else {
+                            let msg = "Silme işlemi başarısız";
+                            try {
+                              const data = await res.json();
+                              msg = String(data?.error || msg);
+                            } catch {}
+                            toast.error(msg);
+                          }
+                        }}
+                      >
+                        {deleting ? <Spinner className="mr-2" /> : null}
+                        {deleting ? "Siliniyor" : "Onayla ve Sil"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>

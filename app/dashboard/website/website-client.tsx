@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Globe,
   ImageIcon,
@@ -223,6 +223,26 @@ export default function WebsiteClient({
   const [savingAbout, setSavingAbout] = useState(false);
   const [savingBranches, setSavingBranches] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
+  const [hasWebsiteFeature, setHasWebsiteFeature] = useState(true);
+  const [hasCustomDomainFeature, setHasCustomDomainFeature] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("tenant_subscriptions")
+        .select("status, plan:platform_plans(features)")
+        .eq("tenant_id", tenant.id)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+      const features = (data as any)?.plan?.features || [];
+      const arr = Array.isArray(features) ? features : [];
+      setHasWebsiteFeature(arr.length ? arr.includes("website") : true);
+      setHasCustomDomainFeature(
+        arr.length ? arr.includes("custom_domain") : true
+      );
+    })();
+  }, [tenant.id]);
 
   const heroDefaults = (() => {
     try {
@@ -381,7 +401,11 @@ export default function WebsiteClient({
             <Eye className="h-4 w-4 mr-1" />
             <span className="hidden sm:inline">Önizle</span>
           </Button>
-          <Button size="sm" onClick={handleSave}>
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!hasWebsiteFeature || savingTenant}
+          >
             {savingTenant ? (
               <Spinner className="mr-2" />
             ) : saved ? (
@@ -393,6 +417,15 @@ export default function WebsiteClient({
           </Button>
         </div>
       </div>
+
+      {!hasWebsiteFeature && (
+        <Card className="bg-amber-900/20 border-amber-700">
+          <CardContent className="p-4 text-amber-200">
+            Paketiniz bu özelliği desteklemiyor. Web sitesi yönetimi için üst
+            pakete geçin.
+          </CardContent>
+        </Card>
+      )}
 
       {/* Web Sitesi Kartı (Ayarlar sayfasından) */}
       <Card className="bg-card/50 border-border/50">
@@ -416,6 +449,7 @@ export default function WebsiteClient({
               onCheckedChange={(checked) =>
                 setTenant((prev) => ({ ...prev, websiteEnabled: checked }))
               }
+              disabled={!hasWebsiteFeature}
             />
           </div>
           <div
@@ -488,9 +522,10 @@ export default function WebsiteClient({
                   websiteDomain: e.target.value,
                 }))
               }
+              disabled={!hasCustomDomainFeature}
             />
             <p className="text-xs text-muted-foreground">
-              Pro ve üzeri paketlerde kullanılabilir
+              Özel domain sadece ilgili pakette sunulur
             </p>
           </div>
         </CardContent>

@@ -1,0 +1,366 @@
+{
+  "runAt": "2025-12-15T17:17:25.340Z",
+  "environment": {
+    "baseURL": "http://localhost:3000",
+    "browser": "chromium",
+    "headless": true
+  },
+  "summary": {
+    "total": 54,
+    "passed": 54,
+    "failed": 0,
+    "durationMs": 142621
+  },
+  "setupStatus": {
+    "status": "Başlanmadı",
+    "currentStepIndex": 0,
+    "steps": [
+      {
+        "key": "branches",
+        "completed": false,
+        "count": 0
+      },
+      {
+        "key": "instructors",
+        "completed": false,
+        "count": 0
+      },
+      {
+        "key": "sports",
+        "completed": false,
+        "count": 0
+      },
+      {
+        "key": "groups",
+        "completed": false,
+        "count": 0
+      },
+      {
+        "key": "venues",
+        "completed": false,
+        "count": 0
+      },
+      {
+        "key": "students",
+        "completed": false,
+        "count": 0
+      },
+      {
+        "key": "trainings",
+        "completed": false,
+        "count": 0
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "Dashboard",
+      "status": "error",
+      "ttfbMs": 2360
+    },
+    {
+      "name": "Applications",
+      "status": "error",
+      "ttfbMs": 244
+    },
+    {
+      "name": "Trainings",
+      "status": "error",
+      "ttfbMs": 2117
+    },
+    {
+      "name": "Attendance",
+      "status": "error",
+      "ttfbMs": 253
+    },
+    {
+      "name": "Calendar",
+      "status": "error",
+      "ttfbMs": 2096
+    },
+    {
+      "name": "Reports",
+      "status": "error",
+      "ttfbMs": 247
+    },
+    {
+      "name": "Accounting",
+      "status": "error",
+      "ttfbMs": 2086
+    }
+  ],
+  "checks": [],
+  "tests": [
+    {
+      "name": "Route status /admin",
+      "status": "passed",
+      "durationMs": 2918
+    },
+    {
+      "name": "Route status /admin/users",
+      "status": "passed",
+      "durationMs": 2541
+    },
+    {
+      "name": "Route status /admin/subscriptions",
+      "status": "passed",
+      "durationMs": 2621
+    },
+    {
+      "name": "Route status /admin/payments",
+      "status": "passed",
+      "durationMs": 2532
+    },
+    {
+      "name": "Route status /admin/schools",
+      "status": "passed",
+      "durationMs": 2583
+    },
+    {
+      "name": "Route status /admin/plans",
+      "status": "passed",
+      "durationMs": 2510
+    },
+    {
+      "name": "Route status /admin/reports",
+      "status": "passed",
+      "durationMs": 2457
+    },
+    {
+      "name": "Route status /admin/notifications",
+      "status": "passed",
+      "durationMs": 2490
+    },
+    {
+      "name": "Route status /admin/settings",
+      "status": "passed",
+      "durationMs": 2455
+    },
+    {
+      "name": "Login page renders",
+      "status": "passed",
+      "durationMs": 2921
+    },
+    {
+      "name": "Unauthorized access to dashboard redirects to login",
+      "status": "passed",
+      "durationMs": 2609
+    },
+    {
+      "name": "Route status /checkout/success",
+      "status": "passed",
+      "durationMs": 2956
+    },
+    {
+      "name": "Route status /checkout/error",
+      "status": "passed",
+      "durationMs": 2569
+    },
+    {
+      "name": "Route status /dashboard",
+      "status": "passed",
+      "durationMs": 2889
+    },
+    {
+      "name": "Route status /dashboard/applications",
+      "status": "passed",
+      "durationMs": 2553
+    },
+    {
+      "name": "Route status /dashboard/students",
+      "status": "passed",
+      "durationMs": 2576
+    },
+    {
+      "name": "Route status /dashboard/instructors",
+      "status": "passed",
+      "durationMs": 2451
+    },
+    {
+      "name": "Route status /dashboard/groups",
+      "status": "passed",
+      "durationMs": 2446
+    },
+    {
+      "name": "Route status /dashboard/trainings",
+      "status": "passed",
+      "durationMs": 2425
+    },
+    {
+      "name": "Route status /dashboard/attendance",
+      "status": "passed",
+      "durationMs": 2428
+    },
+    {
+      "name": "Route status /dashboard/calendar",
+      "status": "passed",
+      "durationMs": 2451
+    },
+    {
+      "name": "Route status /dashboard/reports",
+      "status": "passed",
+      "durationMs": 2441
+    },
+    {
+      "name": "Route status /dashboard/accounting",
+      "status": "passed",
+      "durationMs": 2414
+    },
+    {
+      "name": "Route status /dashboard/dues",
+      "status": "passed",
+      "durationMs": 2449
+    },
+    {
+      "name": "Route status /dashboard/products",
+      "status": "passed",
+      "durationMs": 2420
+    },
+    {
+      "name": "Route status /dashboard/orders",
+      "status": "passed",
+      "durationMs": 2431
+    },
+    {
+      "name": "Route status /dashboard/payment-history",
+      "status": "passed",
+      "durationMs": 2446
+    },
+    {
+      "name": "Route status /dashboard/subscriptions",
+      "status": "passed",
+      "durationMs": 2431
+    },
+    {
+      "name": "Route status /dashboard/notifications",
+      "status": "passed",
+      "durationMs": 2424
+    },
+    {
+      "name": "Route status /dashboard/venues",
+      "status": "passed",
+      "durationMs": 2433
+    },
+    {
+      "name": "Route status /dashboard/branches",
+      "status": "passed",
+      "durationMs": 2419
+    },
+    {
+      "name": "Route status /dashboard/registration-links",
+      "status": "passed",
+      "durationMs": 2417
+    },
+    {
+      "name": "Route status /dashboard/website",
+      "status": "passed",
+      "durationMs": 2473
+    },
+    {
+      "name": "Route status /dashboard/general-accounting",
+      "status": "passed",
+      "durationMs": 2439
+    },
+    {
+      "name": "Route status /dashboard/settings",
+      "status": "passed",
+      "durationMs": 2455
+    },
+    {
+      "name": "Unknown route returns error or not-found",
+      "status": "passed",
+      "durationMs": 2574
+    },
+    {
+      "name": "Auth loading exists",
+      "status": "passed",
+      "durationMs": 2499
+    },
+    {
+      "name": "Route status /instructor",
+      "status": "passed",
+      "durationMs": 2654
+    },
+    {
+      "name": "Route status /instructor/groups",
+      "status": "passed",
+      "durationMs": 2464
+    },
+    {
+      "name": "Route status /instructor/trainings",
+      "status": "passed",
+      "durationMs": 2531
+    },
+    {
+      "name": "Route status /instructor/attendance",
+      "status": "passed",
+      "durationMs": 2458
+    },
+    {
+      "name": "Route status /instructor/analytics",
+      "status": "passed",
+      "durationMs": 2469
+    },
+    {
+      "name": "Route status /instructor/settings",
+      "status": "passed",
+      "durationMs": 2496
+    },
+    {
+      "name": "Route status /",
+      "status": "passed",
+      "durationMs": 2456
+    },
+    {
+      "name": "Route status /pricing",
+      "status": "passed",
+      "durationMs": 2564
+    },
+    {
+      "name": "Route status /about",
+      "status": "passed",
+      "durationMs": 2436
+    },
+    {
+      "name": "Route status /features",
+      "status": "passed",
+      "durationMs": 2446
+    },
+    {
+      "name": "Setup status from /dashboard/setup",
+      "status": "passed",
+      "durationMs": 2445
+    },
+    {
+      "name": "Collect modules status for system report",
+      "status": "passed",
+      "durationMs": 9494
+    },
+    {
+      "name": "Route status /site/test",
+      "status": "passed",
+      "durationMs": 2408
+    },
+    {
+      "name": "Route status /site/test/magaza",
+      "status": "passed",
+      "durationMs": 2449
+    },
+    {
+      "name": "Route status /site/test/sepet",
+      "status": "passed",
+      "durationMs": 2435
+    },
+    {
+      "name": "Route status /site/test/siparisler",
+      "status": "passed",
+      "durationMs": 2448
+    },
+    {
+      "name": "Route status /site/test/kayit",
+      "status": "passed",
+      "durationMs": 2422
+    }
+  ],
+  "errors": []
+}

@@ -74,6 +74,7 @@ export function GroupDetailClient({
   const [searchResults, setSearchResults] = useState<Student[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const supabase = createClient();
+  const [branchName, setBranchName] = useState<string>("");
 
   // Edit states
   const [editGroupName, setEditGroupName] = useState(group.name);
@@ -97,6 +98,9 @@ export function GroupDetailClient({
   const [editDescription, setEditDescription] = useState(
     group.description || ""
   );
+  const [sportsOptions, setSportsOptions] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
 
   const handleUpdateGroup = async () => {
     if (!editGroupName) {
@@ -104,11 +108,21 @@ export function GroupDetailClient({
       return;
     }
 
+    let resolvedSportId: string | null = null;
+    if (editSportType) {
+      const { data: s } = await supabase
+        .from("sports")
+        .select("id")
+        .eq("tenant_id", group.tenantId)
+        .ilike("name", editSportType)
+        .maybeSingle();
+      resolvedSportId = s?.id || null;
+    }
     const { error } = await supabase
       .from("groups")
       .update({
         name: editGroupName,
-        sport_type: editSportType || null,
+        sport_id: resolvedSportId,
         birth_date_from: editBirthDateFrom || null,
         birth_date_to: editBirthDateTo || null,
         license_requirement: editLicenseRequirement,
@@ -212,20 +226,15 @@ export function GroupDetailClient({
 
   const addStudentToGroup = async (studentId: string) => {
     try {
-      // Use upsert to handle re-adding students who were previously removed (soft deleted)
-      // On conflict (student_id, group_id), we update the status to active and clear left_at
-      const { error } = await supabase.from("student_groups").upsert(
-        {
-          student_id: studentId,
-          group_id: group.id,
-          status: "active",
-          joined_at: new Date().toISOString().split("T")[0],
-          left_at: null, // Clear left_at if it was set
-        },
-        { onConflict: "student_id,group_id" }
-      );
-
-      if (error) throw error;
+      const res = await fetch(`/api/groups/${group.id}/add-student`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "API error");
+      }
 
       // Aidat oluşturma artık veritabanı tetikleyicisi ile yapılır
 
@@ -244,17 +253,15 @@ export function GroupDetailClient({
       return;
 
     try {
-      const { error } = await supabase
-        .from("student_groups")
-        .update({
-          status: "left",
-          left_at: new Date().toISOString().split("T")[0],
-        })
-        .eq("group_id", group.id)
-        .eq("student_id", studentId)
-        .eq("status", "active");
-
-      if (error) throw error;
+      const res = await fetch(`/api/groups/${group.id}/remove-student`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as any).error || "API error");
+      }
 
       toast.success("Öğrenci gruptan çıkarıldı");
       router.refresh();
@@ -289,6 +296,41 @@ export function GroupDetailClient({
     ? (group.studentCount / group.capacity) * 100
     : 0;
 
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const { data } = await supabase
+          .from("branches")
+          .select("name")
+          .eq("id", group.branchId)
+          .maybeSingle();
+        if (data?.name) setBranchName(String(data.name));
+      } catch {}
+    };
+    run();
+  }, [group.branchId, supabase]);
+
+  useEffect(() => {
+    const loadSports = async () => {
+      try {
+        const { data: sports } = await supabase
+          .from("sports")
+          .select("id,name")
+          .eq("tenant_id", group.tenantId)
+          .eq("is_active", true)
+          .order("sort_order")
+          .order("name");
+        setSportsOptions(
+          (sports || []).map((s: any) => ({
+            id: String(s.id),
+            name: String(s.name),
+          }))
+        );
+      } catch {}
+    };
+    loadSports();
+  }, [group.tenantId, supabase]);
+
   return (
     <div className="flex flex-col gap-4 p-4 pb-24">
       {/* Header */}
@@ -310,6 +352,12 @@ export function GroupDetailClient({
               <div>
                 <h2 className="text-lg font-semibold">{group.name}</h2>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  {branchName && (
+                    <Badge variant="outline" className="text-xs">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {branchName}
+                    </Badge>
+                  )}
                   <span>{group.sportType}</span>
                   <span>•</span>
                   <span>{group.ageGroup}</span>
@@ -354,11 +402,11 @@ export function GroupDetailClient({
                         <SelectValue placeholder="Branş seçin" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="basketball">Basketbol</SelectItem>
-                        <SelectItem value="football">Futbol</SelectItem>
-                        <SelectItem value="volleyball">Voleybol</SelectItem>
-                        <SelectItem value="swimming">Yüzme</SelectItem>
-                        <SelectItem value="tennis">Tenis</SelectItem>
+                        {sportsOptions.map((s) => (
+                          <SelectItem key={s.id} value={s.name}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

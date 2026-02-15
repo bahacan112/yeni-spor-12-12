@@ -28,7 +28,30 @@ export async function POST(
     p_branch_id: branchId,
     p_due_month: month,
   });
-  if (error)
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true });
+  if (!error) {
+    return NextResponse.json({ ok: true, count: data ?? 0 });
+  }
+
+  const { data: students } = await supabase
+    .from("students")
+    .select("id")
+    .eq("tenant_id", userData.tenant_id)
+    .eq("branch_id", branchId)
+    .eq("status", "active");
+
+  if (!students || students.length === 0) {
+    return NextResponse.json({ ok: true, count: 0 });
+  }
+
+  let ok = 0;
+  for (const s of students as { id: string }[]) {
+    const { error: compErr } = await supabase.rpc("compute_monthly_due_v3", {
+      p_tenant_id: userData.tenant_id,
+      p_branch_id: branchId,
+      p_student_id: s.id,
+      p_due_month: month,
+    });
+    if (!compErr) ok++;
+  }
+  return NextResponse.json({ ok: true, count: ok });
 }

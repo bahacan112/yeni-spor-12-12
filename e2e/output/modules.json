@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Dashboard",
+    "status": "error",
+    "ttfbMs": 2360
+  },
+  {
+    "name": "Applications",
+    "status": "error",
+    "ttfbMs": 244
+  },
+  {
+    "name": "Trainings",
+    "status": "error",
+    "ttfbMs": 2117
+  },
+  {
+    "name": "Attendance",
+    "status": "error",
+    "ttfbMs": 253
+  },
+  {
+    "name": "Calendar",
+    "status": "error",
+    "ttfbMs": 2096
+  },
+  {
+    "name": "Reports",
+    "status": "error",
+    "ttfbMs": 247
+  },
+  {
+    "name": "Accounting",
+    "status": "error",
+    "ttfbMs": 2086
+  }
+]

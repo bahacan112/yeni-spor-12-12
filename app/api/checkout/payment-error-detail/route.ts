@@ -1,0 +1,40 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseService } from "@/lib/supabase/service";
+
+export async function GET(req: NextRequest) {
+  try {
+    const svc = getSupabaseService();
+    const paymentId = req.nextUrl.searchParams.get("paymentId") || "";
+    if (!paymentId)
+      return NextResponse.json({ error: "paymentId eksik" }, { status: 400 });
+    const { data: payment, error } = await svc
+      .from("tenant_payments")
+      .select("*")
+      .eq("id", paymentId)
+      .maybeSingle();
+    if (error)
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (!payment)
+      return NextResponse.json({ error: "Ödeme bulunamadı" }, { status: 404 });
+    let meta: any = {};
+    try {
+      meta = JSON.parse(String(payment.description || "{}"));
+    } catch {
+      meta = {};
+    }
+    return NextResponse.json({
+      paymentId: String(payment.id),
+      status: String(payment.status || ""),
+      gatewayStatus: String(payment.gateway_status || ""),
+      errorCode: String(payment.gateway_error_code || ""),
+      errorMessage: String(payment.gateway_error_message || ""),
+      amount: Number(meta.amount || payment.amount || 0),
+      updatedAt: payment.updated_at,
+    });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e.message || "Server error" },
+      { status: 500 }
+    );
+  }
+}

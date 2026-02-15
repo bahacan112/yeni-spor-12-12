@@ -19,6 +19,7 @@ import {
   Bell,
   CreditCard,
   Building2,
+  Trophy,
   ChevronDown,
   ChevronRight,
   BarChart3,
@@ -54,6 +55,8 @@ const menuItems = [
         icon: BarChart3,
         label: "Genel Muhasebe",
       },
+      { href: "/dashboard/reports", icon: BarChart3, label: "Raporlar" },
+      { href: "/dashboard/subscriptions", icon: CreditCard, label: "Abonelik" },
       { href: "/dashboard/notifications", icon: Bell, label: "Bildirimler" },
       { href: "/dashboard/settings", icon: Settings, label: "Ayarlar" },
     ],
@@ -62,10 +65,17 @@ const menuItems = [
     title: "Şube Yönetimi",
     items: [
       { href: "/dashboard/students", icon: Users, label: "Öğrenciler" },
+      { href: "/dashboard/sports", icon: Trophy, label: "Branşlar" },
       { href: "/dashboard/groups", icon: Layers, label: "Gruplar" },
       { href: "/dashboard/trainings", icon: Calendar, label: "Antrenmanlar" },
+      { href: "/dashboard/calendar", icon: Calendar, label: "Takvim" },
       { href: "/dashboard/dues", icon: CreditCard, label: "Aidat Takibi" },
       { href: "/dashboard/accounting", icon: Wallet, label: "Muhasebe" },
+      {
+        href: "/dashboard/payment-history",
+        icon: CreditCard,
+        label: "Ödeme Geçmişi",
+      },
       {
         href: "/dashboard/accounting/policy",
         icon: Settings,
@@ -200,6 +210,7 @@ export function Sidebar({ tenantName }: SidebarProps) {
                         "/dashboard/products",
                         "/dashboard/orders",
                         "/dashboard/general-accounting",
+                        "/dashboard/subscriptions",
                       ];
                       const nextHref =
                         currentBranch && !noBranchPaths.includes(item.href)

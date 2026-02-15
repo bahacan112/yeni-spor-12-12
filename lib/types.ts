@@ -122,6 +122,8 @@ export interface Group {
   name: string;
   description?: string;
   sportType?: string;
+  sportId?: string;
+  sport?: Sport;
   ageGroup?: string;
   birthDateFrom?: string;
   birthDateTo?: string;
@@ -224,6 +226,15 @@ export interface MonthlyDue {
   paidAmount: number;
   dueDate: string;
   status: "pending" | "paid" | "partial" | "overdue";
+  snapshotState?:
+    | "pending"
+    | "partial"
+    | "paid"
+    | "overdue"
+    | "upcoming_3"
+    | "upcoming_2"
+    | "upcoming_1"
+    | "due_today";
   paidAt?: string;
   notes?: string;
   policyModelApplied?: string;
@@ -291,6 +302,9 @@ export interface Application {
   tenantId: string;
   branchId?: string;
   registrationLinkId?: string;
+  sportId?: string;
+  sportName?: string;
+  sport?: Sport;
   fullName: string;
   birthDate?: string;
   gender?: "male" | "female" | "other";
@@ -307,6 +321,13 @@ export interface Application {
   processedBy?: string;
   processedAt?: string;
   createdAt: string;
+}
+
+export interface Sport {
+  id: string;
+  name: string;
+  slug?: string;
+  isActive?: boolean;
 }
 
 export interface ProductCategory {
@@ -439,6 +460,9 @@ export interface PlatformPlan {
   maxInstructors?: number | null;
   features: string[];
   isActive: boolean;
+  trialEnabled?: boolean;
+  trialDefaultDays?: number | null;
+  isFeatured?: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -458,6 +482,8 @@ export interface TenantSubscription {
   cancelledAt?: string;
   paymentMethod?: string;
   autoRenew: boolean;
+  isTrial?: boolean;
+  trialDays?: number | null;
   createdAt: string;
   updatedAt: string;
 }

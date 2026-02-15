@@ -151,7 +151,7 @@ export function VenuesClient({
                   address: "",
                   description: "",
                   isActive: true,
-                  branchId: fallbackBranchId || "",
+                  branchId: "",
                 });
               }}
             >
@@ -199,13 +199,16 @@ export function VenuesClient({
               <div className="space-y-2">
                 <Label>Şube</Label>
                 <Select
-                  value={form.branchId || fallbackBranchId || ""}
-                  onValueChange={(v) => setForm({ ...form, branchId: v })}
+                  value={form.branchId || ""}
+                  onValueChange={(v) =>
+                    setForm({ ...form, branchId: v === "none" ? "" : v })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Şube seçin" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Şube atama</SelectItem>
                     {branches.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
                         {b.name}
@@ -296,18 +299,13 @@ export function VenuesClient({
                       toast.error("Tenant bilgisi bulunamadı");
                       return;
                     }
-                    const effectiveBranchId =
-                      form.branchId || currentBranch?.id || fallbackBranchId;
-                    if (!effectiveBranchId) {
-                      toast.error("Şube seçimi zorunlu");
-                      return;
-                    }
+                    const selectedBranchId = form.branchId || "";
                     if (editingVenue) {
                       const { error } = await supabase
                         .from("venues")
                         .update({
                           tenant_id: tenantId,
-                          branch_id: editingVenue.branchId || effectiveBranchId,
+                          branch_id: selectedBranchId || null,
                           name: form.name,
                           type: form.type || null,
                           capacity: form.capacity
@@ -328,7 +326,7 @@ export function VenuesClient({
                     } else {
                       const { error } = await supabase.from("venues").insert({
                         tenant_id: tenantId,
-                        branch_id: effectiveBranchId,
+                        branch_id: selectedBranchId || null,
                         name: form.name,
                         type: form.type || null,
                         capacity: form.capacity ? Number(form.capacity) : null,
@@ -427,8 +425,7 @@ export function VenuesClient({
                               address: venue.address || "",
                               description: venue.description || "",
                               isActive: venue.isActive,
-                              branchId:
-                                venue.branchId || fallbackBranchId || "",
+                              branchId: venue.branchId || "",
                             });
                             setIsNewVenueOpen(true);
                           }}

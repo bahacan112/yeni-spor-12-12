@@ -34,9 +34,15 @@ export async function getNotificationsData() {
     .from("monthly_dues")
     .select("*, student:students(*)")
     .eq("tenant_id", tenantId)
-    // We fetch all pending/overdue to filter in client or we can filter here
-    // Let's fetch all active ones to be flexible
-    .in("status", ["pending", "overdue"]) 
+    .or(
+      [
+        "snapshot_state.eq.upcoming_3",
+        "snapshot_state.eq.upcoming_2",
+        "snapshot_state.eq.upcoming_1",
+        "snapshot_state.eq.due_today",
+        "snapshot_state.eq.overdue",
+      ].join(",")
+    )
 
   if (duesError) {
     console.error("Error fetching dues for notifications:", duesError)

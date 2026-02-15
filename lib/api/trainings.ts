@@ -50,6 +50,28 @@ export async function getTrainingsData(branchId?: string) {
     throw new Error("Failed to fetch trainings");
   }
 
+  // Compute student counts per group for trainings
+  const groupIds = Array.from(
+    new Set(
+      (trainings || [])
+        .map((t: any) => t.group_id)
+        .filter((id: any) => !!id)
+    )
+  );
+  let groupCounts: Record<string, number> = {};
+  if (groupIds.length > 0) {
+    const { data: sgRows } = await supabase
+      .from("student_groups")
+      .select("group_id")
+      .in("group_id", groupIds as any)
+      .eq("status", "active");
+    groupCounts = (sgRows || []).reduce((acc: Record<string, number>, row: any) => {
+      const gid = String(row.group_id);
+      acc[gid] = (acc[gid] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
   const formattedTrainings = (trainings || []).map((t: any) => ({
     id: t.id,
     tenantId: t.tenant_id,
@@ -97,7 +119,10 @@ export async function getTrainingsData(branchId?: string) {
           instructorId: t.group.instructor_id ?? undefined,
           schedule: t.group.schedule ?? undefined,
           status: t.group.status,
-          studentCount: t.group.student_count ?? undefined,
+          studentCount:
+            typeof groupCounts[String(t.group_id)] === "number"
+              ? groupCounts[String(t.group_id)]
+              : undefined,
           createdAt: t.group.created_at,
           updatedAt: t.group.updated_at,
         }
@@ -131,7 +156,7 @@ export async function getTrainingsData(branchId?: string) {
 
   let groupsQuery = supabase
     .from("groups")
-    .select("*")
+    .select("*, sport:sports(*)")
     .eq("tenant_id", tenantId)
     .eq("status", "active")
     .order("name");
@@ -174,7 +199,11 @@ export async function getTrainingsData(branchId?: string) {
     branchId: g.branch_id,
     name: g.name,
     description: g.description,
-    sportType: g.sport_type,
+    sportType: g.sport?.name || g.sport_type,
+    sportId: g.sport?.id,
+    sport: g.sport
+      ? { id: g.sport.id, name: g.sport.name, slug: g.sport.slug }
+      : undefined,
     ageGroup: g.age_group,
     capacity: g.capacity,
     monthlyFee: g.monthly_fee ?? undefined,
@@ -202,11 +231,33 @@ export async function getTrainingsData(branchId?: string) {
     updatedAt: v.updated_at,
   }));
 
+  const { data: branches } = await supabase
+    .from("branches")
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .order("is_main", { ascending: false })
+    .order("name");
+  const formattedBranches = (branches || []).map((b: any) => ({
+    id: b.id,
+    tenantId: b.tenant_id,
+    name: b.name,
+    address: b.address,
+    city: b.city,
+    district: b.district,
+    phone: b.phone,
+    email: b.email,
+    isMain: b.is_main,
+    isActive: b.is_active,
+    createdAt: b.created_at,
+    updatedAt: b.updated_at,
+  }));
+
   return {
     trainings: formattedTrainings as Training[],
     instructors: formattedInstructors,
     groups: formattedGroups,
     venues: formattedVenues,
+    branches: formattedBranches,
     tenantId,
   };
 }

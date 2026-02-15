@@ -230,6 +230,7 @@ function mapMonthlyDueFromRaw(data: any): MonthlyDue {
     paidAmount: data.paid_amount,
     dueDate: data.due_date,
     status: data.status,
+    snapshotState: data.snapshot_state,
     paidAt: data.paid_at,
     notes: data.notes,
     policyModelApplied: data.policy_model_applied,

@@ -135,18 +135,16 @@ export function NotificationsClient({
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [customMessage, setCustomMessage] = useState("");
 
-  // Ödemesi yaklaşan öğrenciler
-  const upcomingPayments = dues.filter((due) => {
-    const dueDate = new Date(due.dueDate);
-    const now = new Date();
-    const daysUntilDue = Math.ceil(
-      (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return daysUntilDue <= 7 && daysUntilDue > 0 && due.status === "pending";
-  });
+  const upcomingPayments = dues.filter(
+    (due) =>
+      ["upcoming_3", "upcoming_2", "upcoming_1"].includes(
+        String(due.snapshotState || "")
+      ) && due.status !== "paid"
+  );
 
-  // Gecikmiş ödemeler
-  const overduePayments = dues.filter((due) => due.status === "overdue");
+  const overduePayments = dues.filter(
+    (due) => String(due.snapshotState || "") === "overdue"
+  );
 
   const toggleStudentSelection = (studentId: string) => {
     setSelectedStudents((prev) =>

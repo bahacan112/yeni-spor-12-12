@@ -1,0 +1,12 @@
+ALTER FUNCTION public.handle_new_user() SET search_path = '';
+ALTER FUNCTION public.handle_user_update() SET search_path = '';
+ALTER FUNCTION public.get_current_user_tenant_id() SET search_path = '';
+ALTER FUNCTION public.get_student_monthly_amount(p_student_id uuid) SET search_path = '';
+ALTER FUNCTION public.get_student_monthly_amount_for_branch(p_student_id uuid, p_branch_id uuid) SET search_path = '';
+ALTER FUNCTION public.recompute_subscription_monthly_amount(p_student_id uuid) SET search_path = '';
+ALTER FUNCTION public.sync_subscription_on_group_fee_update() SET search_path = '';
+ALTER FUNCTION public.sync_subscription_with_group() SET search_path = '';
+ALTER FUNCTION public.validate_student_group_membership() SET search_path = '';
+ALTER FUNCTION public.compute_monthly_due(p_tenant_id uuid, p_branch_id uuid, p_student_id uuid, p_due_month date) SET search_path = '';
+ALTER FUNCTION public.generate_monthly_dues_v2(p_tenant_id uuid, p_branch_id uuid, p_due_month date) SET search_path = '';
+ALTER FUNCTION public.create_monthly_due_on_group_join() SET search_path = '';

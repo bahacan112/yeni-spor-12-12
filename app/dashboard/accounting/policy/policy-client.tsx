@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save, Shield, CalendarCheck, Cog, HelpCircle } from "lucide-react";
+import {
+  Save,
+  Shield,
+  CalendarCheck,
+  Calendar,
+  Cog,
+  HelpCircle,
+} from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -56,6 +63,16 @@ export default function PolicyClient({
   const [conflictPriority, setConflictPriority] =
     useState<ConflictPriority>("freeze_first");
 
+  const [dueDatePolicy, setDueDatePolicy] = useState<
+    "FIRST_DAY" | "FIXED_DAY" | "FIRST_BUSINESS_DAY" | "LAST_BUSINESS_DAY"
+  >("FIRST_DAY");
+  const [dueDateDay, setDueDateDay] = useState<number | undefined>(undefined);
+  const [recomputeProtectPaid, setRecomputeProtectPaid] = useState(false);
+  const [recomputeProtectPartial, setRecomputeProtectPartial] = useState(false);
+  const [recomputeLockedAfterDay, setRecomputeLockedAfterDay] = useState<
+    number | undefined
+  >(undefined);
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -82,6 +99,24 @@ export default function PolicyClient({
             (p.conflict_priority || "freeze_first") as ConflictPriority
           );
         }
+        const resMeta = await fetch(
+          `/api/branches/${branchId}/fee-policy-meta`
+        );
+        const jm = await resMeta.json().catch(() => ({}));
+        const m = jm?.meta;
+        if (m) {
+          setDueDatePolicy(
+            String(m.due_date_policy || "FIRST_DAY") as
+              | "FIRST_DAY"
+              | "FIXED_DAY"
+              | "FIRST_BUSINESS_DAY"
+              | "LAST_BUSINESS_DAY"
+          );
+          setDueDateDay(m.due_date_day ?? undefined);
+          setRecomputeProtectPaid(!!m.recompute_protect_paid);
+          setRecomputeProtectPartial(!!m.recompute_protect_partial);
+          setRecomputeLockedAfterDay(m.recompute_locked_after_day ?? undefined);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -98,7 +133,7 @@ export default function PolicyClient({
         return;
       }
       setSaving(true);
-      const payload = {
+      const payloadPolicy = {
         fee_model: feeModel,
         freeze_enabled: freezeEnabled,
         freeze_before_month_start_only: freezeBeforeStartOnly,
@@ -112,13 +147,34 @@ export default function PolicyClient({
         free_range_max: freeRangeMax,
         conflict_priority: conflictPriority,
       };
-      const res = await fetch(`/api/branches/${branchId}/fee-policy`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Kaydedilemedi");
+      const payloadMeta = {
+        due_date_policy: dueDatePolicy,
+        due_date_day: dueDateDay,
+        recompute_protect_paid: recomputeProtectPaid,
+        recompute_protect_partial: recomputeProtectPartial,
+        recompute_locked_after_day: recomputeLockedAfterDay,
+      };
+      const [resPolicy, resMeta] = await Promise.all([
+        fetch(`/api/branches/${branchId}/fee-policy`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payloadPolicy),
+        }),
+        fetch(`/api/branches/${branchId}/fee-policy-meta`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payloadMeta),
+        }),
+      ]);
+      const jsonPolicy = await resPolicy.json();
+      const jsonMeta = await resMeta.json().catch(() => ({}));
+      if (!resPolicy.ok) throw new Error(jsonPolicy.error || "Kaydedilemedi");
+      if (!resMeta.ok && jsonMeta?.error !== "migration_required") {
+        throw new Error(jsonMeta?.error || "Meta kaydedilemedi");
+      }
+      if (!resMeta.ok && jsonMeta?.error === "migration_required") {
+        toast.warning("Meta alanları için veritabanı migrasyonu gerekli");
+      }
       toast.success("Aidat politikası kaydedildi");
     } catch (e) {
       console.error(e);
@@ -238,6 +294,82 @@ export default function PolicyClient({
               </TooltipProvider>
             </label>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-border">
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <Calendar className="h-5 w-5" /> Vade Günü Politikası
+          </CardTitle>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="p-1 rounded hover:bg-muted">
+                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-xs">
+                <p className="text-sm">Aidat vade günü belirleme kuralları.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-6 text-sm text-muted-foreground">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="dueDatePolicy"
+                checked={dueDatePolicy === "FIRST_DAY"}
+                onChange={() => setDueDatePolicy("FIRST_DAY")}
+              />{" "}
+              Ayın İlk Günü
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="dueDatePolicy"
+                checked={dueDatePolicy === "FIXED_DAY"}
+                onChange={() => setDueDatePolicy("FIXED_DAY")}
+              />{" "}
+              Ayın X. Günü
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="dueDatePolicy"
+                checked={dueDatePolicy === "FIRST_BUSINESS_DAY"}
+                onChange={() => setDueDatePolicy("FIRST_BUSINESS_DAY")}
+              />{" "}
+              Ayın İlk İş Günü
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="dueDatePolicy"
+                checked={dueDatePolicy === "LAST_BUSINESS_DAY"}
+                onChange={() => setDueDatePolicy("LAST_BUSINESS_DAY")}
+              />{" "}
+              Ayın Son İş Günü
+            </label>
+          </div>
+          {dueDatePolicy === "FIXED_DAY" && (
+            <div className="flex items-center gap-2">
+              <Label className="text-muted-foreground">Gün</Label>
+              <Input
+                type="number"
+                value={dueDateDay ?? ""}
+                onChange={(e) =>
+                  setDueDateDay(
+                    e.target.value ? parseInt(e.target.value, 10) : undefined
+                  )
+                }
+                min={1}
+                max={31}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -553,6 +685,68 @@ export default function PolicyClient({
                   e.target.value ? parseInt(e.target.value, 10) : undefined
                 )
               }
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-border">
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <Shield className="h-5 w-5" /> Güvenlik Duvarları
+          </CardTitle>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="p-1 rounded hover:bg-muted">
+                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-xs">
+                <p className="text-sm">
+                  Aidat hesaplama ve yeniden hesaplama için güvenlik kuralları.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Label className="text-muted-foreground">
+                Ödenmiş Aidatları Korumak
+              </Label>
+            </div>
+            <Switch
+              checked={recomputeProtectPaid}
+              onCheckedChange={setRecomputeProtectPaid}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Label className="text-muted-foreground">
+                Kısmi Ödenmiş Aidatları Korumak
+              </Label>
+            </div>
+            <Switch
+              checked={recomputeProtectPartial}
+              onCheckedChange={setRecomputeProtectPartial}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-muted-foreground">
+              Yeniden Hesaplama Sonrası Kilit Günü
+            </Label>
+            <Input
+              type="number"
+              value={recomputeLockedAfterDay ?? ""}
+              onChange={(e) =>
+                setRecomputeLockedAfterDay(
+                  e.target.value ? parseInt(e.target.value, 10) : undefined
+                )
+              }
+              min={1}
+              max={31}
             />
           </div>
         </CardContent>

@@ -7,6 +7,8 @@ export async function POST(req: NextRequest) {
     const {
       slug,
       code,
+      sportId,
+      sportName,
       fullName,
       birthDate,
       phone,
@@ -37,10 +39,7 @@ export async function POST(req: NextRequest) {
       .eq("slug", slug)
       .single();
     if (tenantErr || !tenant) {
-      return NextResponse.json(
-        { error: "Tenant bulunamadı" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Tenant bulunamadı" }, { status: 404 });
     }
 
     let registrationLink: any | null = null;
@@ -75,10 +74,32 @@ export async function POST(req: NextRequest) {
       branchId = branches && branches[0]?.id;
     }
 
+    let resolvedSportId: string | null = null;
+    if (sportId) {
+      resolvedSportId = sportId;
+    } else if (sportName) {
+      const { data: s } = await supabase
+        .from("sports")
+        .select("id")
+        .eq("tenant_id", tenant.id)
+        .ilike("name", sportName)
+        .maybeSingle();
+      resolvedSportId = s?.id || null;
+    } else if (registrationLink?.group_id) {
+      const { data: g } = await supabase
+        .from("groups")
+        .select("sport_id")
+        .eq("id", registrationLink.group_id)
+        .maybeSingle();
+      resolvedSportId = g?.sport_id || null;
+    }
+
     const payload = {
       tenant_id: tenant.id,
       branch_id: branchId || null,
       registration_link_id: registrationLink?.id || null,
+      sport_id: resolvedSportId,
+      sport_name: sportName || null,
       full_name: fullName,
       birth_date: birthDate || null,
       phone: phone || null,
@@ -98,10 +119,7 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     return NextResponse.json({ ok: true, id: data.id });
   } catch (e: any) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FileText,
   Clock,
@@ -71,8 +71,60 @@ export default function ApplicationsClient({
     type: "approve",
     id: null,
   });
+  const [approveGroupId, setApproveGroupId] = useState<string>("");
+  const [approveGroups, setApproveGroups] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [loadingGroups, setLoadingGroups] = useState<boolean>(false);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    const loadGroupsForApproval = async () => {
+      if (
+        !confirmDialog.open ||
+        confirmDialog.type !== "approve" ||
+        !confirmDialog.id
+      )
+        return;
+      const appLite = applications.find((a) => a.id === confirmDialog.id);
+      if (!appLite) return;
+      setLoadingGroups(true);
+      try {
+        let query = supabase
+          .from("groups")
+          .select("id,name,status")
+          .eq("tenant_id", appLite.tenantId)
+          .order("name");
+        if (appLite.branchId) {
+          query = query.eq("branch_id", appLite.branchId);
+        }
+        if (appLite.sportId) {
+          query = query.eq("sport_id", appLite.sportId);
+        }
+        const { data } = await query;
+        const opts = (data || [])
+          .filter((g: any) => g.status === "active")
+          .map((g: any) => ({ id: String(g.id), name: String(g.name) }));
+        setApproveGroups(opts);
+        const preferred = appLite.preferredGroupId
+          ? String(appLite.preferredGroupId)
+          : "";
+        if (
+          preferred &&
+          opts.some((o: { id: string; name: string }) => o.id === preferred)
+        ) {
+          setApproveGroupId(preferred);
+        } else {
+          setApproveGroupId("");
+        }
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+    loadGroupsForApproval();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmDialog]);
 
   const handleUpdateStatus = async () => {
     if (!confirmDialog.id) return;
@@ -82,6 +134,10 @@ export default function ApplicationsClient({
 
     try {
       if (confirmDialog.type === "approve") {
+        if (!approveGroupId) {
+          toast.error("Onay için grup seçmelisiniz");
+          return;
+        }
         const { data: app, error: appErr } = await supabase
           .from("applications")
           .select("*")
@@ -104,6 +160,10 @@ export default function ApplicationsClient({
         const { data: userRes } = await supabase.auth.getUser();
         const processedBy = userRes?.data?.user?.id || null;
 
+        const msg = String(app.message || "");
+        const licensed =
+          /\[LICENSED:(true|1)\]/i.test(msg) || /lisanslı/i.test(msg);
+
         const { data: studentInsert, error: stuErr } = await supabase
           .from("students")
           .insert({
@@ -115,6 +175,7 @@ export default function ApplicationsClient({
             phone: app.phone || null,
             email: app.email || null,
             address: app.address || null,
+            is_licensed: licensed,
             status: "active",
           })
           .select("id")
@@ -133,13 +194,11 @@ export default function ApplicationsClient({
           });
         }
 
-        if (app.preferred_group_id) {
-          await supabase.from("student_groups").insert({
-            student_id: studentId,
-            group_id: app.preferred_group_id,
-            status: "active",
-          });
-        }
+        await supabase.from("student_groups").insert({
+          student_id: studentId,
+          group_id: approveGroupId,
+          status: "active",
+        });
 
         const { error: updErr } = await supabase
           .from("applications")
@@ -418,6 +477,18 @@ export default function ApplicationsClient({
                     <p className="text-muted-foreground">
                       {selectedApp.preferredGroup?.name || "Grup Tercihi Yok"}
                     </p>
+                    {selectedApp.sport?.name && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          Branş: {selectedApp.sport.name}
+                        </Badge>
+                        {selectedApp.sport.isActive === false && (
+                          <Badge className="bg-red-500/20 text-red-500 border-0 text-[10px]">
+                            Pasif
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                     {getStatusBadge(selectedApp.status)}
                   </div>
                 </div>
@@ -565,6 +636,30 @@ export default function ApplicationsClient({
                 : "Bu başvuruyu reddetmek istediğinize emin misiniz? Bu işlem geri alınamaz."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmDialog.type === "approve" && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Grup seçin</p>
+              <Select
+                value={approveGroupId}
+                onValueChange={(v) => setApproveGroupId(v)}
+              >
+                <SelectTrigger className="bg-card/50">
+                  <SelectValue
+                    placeholder={
+                      loadingGroups ? "Gruplar yükleniyor..." : "Grup seçin"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {approveGroups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>İptal</AlertDialogCancel>
             <AlertDialogAction
@@ -574,6 +669,7 @@ export default function ApplicationsClient({
                   ? "bg-emerald-600 hover:bg-emerald-700"
                   : "bg-red-600 hover:bg-red-700"
               }
+              disabled={confirmDialog.type === "approve" && !approveGroupId}
             >
               {confirmDialog.type === "approve" ? "Onayla" : "Reddet"}
             </AlertDialogAction>

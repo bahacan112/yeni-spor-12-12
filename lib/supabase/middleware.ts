@@ -46,6 +46,35 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
+  if (request.nextUrl.pathname.startsWith("/dashboard") && user) {
+    try {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role, tenant:tenants(subscription_status)")
+        .eq("id", user.id)
+        .single();
+      const role = (userData as any)?.role;
+      const subStatus = (userData as any)?.tenant?.subscription_status;
+      if (role !== "super_admin" && subStatus === "inactive") {
+        return NextResponse.redirect(new URL("/auth/logout", request.url));
+      }
+    } catch {}
+  }
+
+  // Enforce super_admin for all /admin routes
+  if (request.nextUrl.pathname.startsWith("/admin") && user) {
+    try {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      if (!userData || userData.role !== "super_admin") {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+    } catch {}
+  }
+
   // Redirect to dashboard if logged in and trying to access auth pages
   if (
     request.nextUrl.pathname.startsWith("/auth") &&

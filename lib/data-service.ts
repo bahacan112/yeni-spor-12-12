@@ -217,8 +217,8 @@ export async function getGroups(
     .select(
       `
       *,
-      instructors (*)
-    `
+      instructors!fk_groups_instructor (*)
+      `
     )
     .eq("tenant_id", tenantId)
     .order("name");
@@ -243,8 +243,8 @@ export async function getGroup(groupId: string): Promise<Group | null> {
     .select(
       `
       *,
-      instructors (*)
-    `
+      instructors!fk_groups_instructor (*)
+      `
     )
     .eq("id", groupId)
     .single();
@@ -766,6 +766,7 @@ function mapMonthlyDue(data: any): MonthlyDue {
     paidAmount: data.paid_amount,
     dueDate: data.due_date,
     status: data.status,
+    snapshotState: data.snapshot_state,
     paidAt: data.paid_at,
     createdAt: data.created_at,
     updatedAt: data.updated_at,

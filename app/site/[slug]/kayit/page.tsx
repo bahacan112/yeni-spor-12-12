@@ -1,37 +1,43 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { ArrowLeft, Check, ChevronRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useParams, useSearchParams } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { ArrowLeft, Check, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useParams, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
-const sports = [
-  { id: "basketball", name: "Basketbol", groups: ["U10", "U12", "U14", "U16"] },
-  { id: "swimming", name: "Yüzme", groups: ["Başlangıç", "Orta", "İleri"] },
-  { id: "football", name: "Futbol", groups: ["U10", "U12", "U14", "U16"] },
-  { id: "tennis", name: "Tenis", groups: ["Bireysel", "Grup"] },
-]
+// Branşlar artık tenant bazlı dinamik yükleniyor
 
 export default function RegistrationPage() {
-  const { slug } = useParams() as { slug: string }
-  const searchParams = useSearchParams()
-  const code = searchParams.get("code") || ""
-  const supabase = createClient()
-  const [tenant, setTenant] = useState<any | null>(null)
-  const [link, setLink] = useState<any | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [step, setStep] = useState(1)
-  const [selectedSport, setSelectedSport] = useState("")
-  const [submitted, setSubmitted] = useState(false)
+  const { slug } = useParams() as { slug: string };
+  const searchParams = useSearchParams();
+  const code = searchParams.get("code") || "";
+  const supabase = createClient();
+  const [tenant, setTenant] = useState<any | null>(null);
+  const [link, setLink] = useState<any | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [step, setStep] = useState(1);
+  const [selectedSport, setSelectedSport] = useState("");
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+  const [sportsData, setSportsData] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
     birthDate: "",
@@ -42,48 +48,66 @@ export default function RegistrationPage() {
     guardianPhone: "",
     address: "",
     message: "",
-  })
+    isLicensed: "false",
+  });
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       const { data: t } = await supabase
         .from("tenants")
         .select("*")
         .eq("slug", slug)
-        .single()
-      setTenant(t)
+        .single();
+      setTenant(t);
+      try {
+        const res = await fetch(`/api/public/tenants/${slug}/branches`);
+        const json = await res.json();
+        setBranches(Array.isArray(json?.branches) ? json.branches : []);
+      } catch {}
+      try {
+        const res2 = await fetch(`/api/public/tenants/${slug}/sports`);
+        const json2 = await res2.json();
+        setSportsData(Array.isArray(json2?.sports) ? json2.sports : []);
+      } catch {}
       if (code) {
         const { data: rl, error: rlErr } = await supabase
           .from("registration_links")
           .select("*")
           .eq("code", code)
-          .single()
+          .single();
         if (rlErr || !rl) {
-          setError("Kayıt linki bulunamadı")
+          setError("Kayıt linki bulunamadı");
         } else {
-          const isExpired = rl.expires_at ? new Date(rl.expires_at) < new Date() : false
-          if (!rl.is_active) setError("Bu kayıt linki pasif durumda")
-          else if (isExpired) setError("Bu kayıt linkinin süresi dolmuş")
-          setLink(rl)
+          const isExpired = rl.expires_at
+            ? new Date(rl.expires_at) < new Date()
+            : false;
+          if (!rl.is_active) setError("Bu kayıt linki pasif durumda");
+          else if (isExpired) setError("Bu kayıt linkinin süresi dolmuş");
+          setLink(rl);
+          if (rl.branch_id) {
+            setSelectedBranchId(String(rl.branch_id));
+          }
         }
       }
-      setLoading(false)
-    }
-    fetchData()
+      setLoading(false);
+    };
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, code])
+  }, [slug, code]);
 
   const handleSubmit = async () => {
     try {
-      setError(null)
+      setError(null);
       const res = await fetch("/api/public/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug,
           code,
+          branchId: selectedBranchId,
+          sport: selectedSport,
           fullName: form.fullName,
           birthDate: form.birthDate,
           gender: form.gender,
@@ -92,19 +116,22 @@ export default function RegistrationPage() {
           guardianName: form.guardianName,
           guardianPhone: form.guardianPhone,
           address: form.address,
-          message: form.message,
+          message: `${
+            form.isLicensed === "true" ? "[LICENSED:true]" : "[LICENSED:false]"
+          } ${form.message || ""}`.trim(),
+          sportId: selectedSport || null,
         }),
-      })
-      const json = await res.json()
+      });
+      const json = await res.json();
       if (!res.ok) {
-        setError(json?.error || "Başvuru kaydedilemedi")
-        return
+        setError(json?.error || "Başvuru kaydedilemedi");
+        return;
       }
-      setSubmitted(true)
+      setSubmitted(true);
     } catch {
-      setError("Başvuru sırasında bir hata oluştu")
+      setError("Başvuru sırasında bir hata oluştu");
     }
-  }
+  };
 
   if (submitted) {
     return (
@@ -116,7 +143,8 @@ export default function RegistrationPage() {
             </div>
             <h2 className="text-2xl font-bold mb-2">Başvurunuz Alındı!</h2>
             <p className="text-muted-foreground mb-6">
-              Başvurunuz incelemeye alınmıştır. En kısa sürede sizinle iletişime geçeceğiz.
+              Başvurunuz incelemeye alınmıştır. En kısa sürede sizinle iletişime
+              geçeceğiz.
             </p>
             <Button asChild>
               <Link href={`/site/${slug}`}>Ana Sayfaya Dön</Link>
@@ -124,7 +152,7 @@ export default function RegistrationPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -137,16 +165,22 @@ export default function RegistrationPage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <h1 className="font-bold">Kayıt Formu{tenant?.name ? ` - ${tenant.name}` : ""}</h1>
+          <h1 className="font-bold">
+            Kayıt Formu{tenant?.name ? ` - ${tenant.name}` : ""}
+          </h1>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-6 max-w-lg">
         {/* Progress */}
         <div className="flex items-center gap-2 mb-6">
-          {[1, 2, 3].map((s) => (
+          {[1, 2, 3, 4].map((s) => (
             <div key={s} className="flex-1 flex items-center gap-2">
-              <div className={`h-2 flex-1 rounded-full ${s <= step ? "bg-primary" : "bg-muted"}`} />
+              <div
+                className={`h-2 flex-1 rounded-full ${
+                  s <= step ? "bg-primary" : "bg-muted"
+                }`}
+              />
             </div>
           ))}
         </div>
@@ -156,11 +190,13 @@ export default function RegistrationPage() {
           <div className="space-y-4">
             <div>
               <h2 className="text-xl font-bold">Branş Seçimi</h2>
-              <p className="text-muted-foreground text-sm">Kayıt olmak istediğiniz branşı seçin</p>
+              <p className="text-muted-foreground text-sm">
+                Kayıt olmak istediğiniz branşı seçin
+              </p>
             </div>
 
             <div className="space-y-3">
-              {sports.map((sport) => (
+              {sportsData.map((sport) => (
                 <Card
                   key={sport.id}
                   className={`cursor-pointer transition-colors ${
@@ -173,33 +209,107 @@ export default function RegistrationPage() {
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
                       <p className="font-medium">{sport.name}</p>
-                      <p className="text-sm text-muted-foreground">Gruplar: {sport.groups.join(", ")}</p>
                     </div>
                     <div
                       className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedSport === sport.id ? "border-primary bg-primary" : "border-muted-foreground"
+                        selectedSport === sport.id
+                          ? "border-primary bg-primary"
+                          : "border-muted-foreground"
                       }`}
                     >
-                      {selectedSport === sport.id && <Check className="h-3 w-3 text-primary-foreground" />}
+                      {selectedSport === sport.id && (
+                        <Check className="h-3 w-3 text-primary-foreground" />
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
-            <Button className="w-full" size="lg" disabled={!selectedSport} onClick={() => setStep(2)}>
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={!selectedSport}
+              onClick={() => setStep(2)}
+            >
               Devam Et
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
         )}
 
-        {/* Step 2: Student Info */}
+        {/* Step 2: Branch Selection */}
         {step === 2 && (
           <div className="space-y-4">
             <div>
+              <h2 className="text-xl font-bold">Şube Seçimi</h2>
+              <p className="text-muted-foreground text-sm">
+                Kayıt olmak istediğiniz şubeyi seçin
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {(branches || []).map((b) => (
+                <Card
+                  key={b.id}
+                  className={`cursor-pointer transition-colors ${
+                    selectedBranchId === String(b.id)
+                      ? "border-primary bg-primary/5"
+                      : "bg-card/50 border-border/50 hover:bg-card/80"
+                  }`}
+                  onClick={() => setSelectedBranchId(String(b.id))}
+                >
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{b.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {b.address || ""}
+                      </p>
+                    </div>
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        selectedBranchId === String(b.id)
+                          ? "border-primary bg-primary"
+                          : "border-muted-foreground"
+                      }`}
+                    >
+                      {selectedBranchId === String(b.id) && (
+                        <Check className="h-3 w-3 text-primary-foreground" />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 bg-transparent"
+                onClick={() => setStep(1)}
+              >
+                Geri
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={!selectedBranchId}
+                onClick={() => setStep(3)}
+              >
+                Devam Et
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Student Info */}
+        {step === 3 && (
+          <div className="space-y-4">
+            <div>
               <h2 className="text-xl font-bold">Öğrenci Bilgileri</h2>
-              <p className="text-muted-foreground text-sm">Öğrenci bilgilerini doldurun</p>
+              <p className="text-muted-foreground text-sm">
+                Öğrenci bilgilerini doldurun
+              </p>
             </div>
 
             <Card className="bg-card/50 border-border/50">
@@ -207,22 +317,53 @@ export default function RegistrationPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Ad</Label>
-                    <Input placeholder="Öğrenci adı" value={form.fullName.split(" ")[0] || ""} onChange={(e) => setForm({ ...form, fullName: `${e.target.value} ${form.fullName.split(" ")[1] || ""}`.trim() })} />
+                    <Input
+                      placeholder="Öğrenci adı"
+                      value={form.fullName.split(" ")[0] || ""}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          fullName: `${e.target.value} ${
+                            form.fullName.split(" ")[1] || ""
+                          }`.trim(),
+                        })
+                      }
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Soyad</Label>
-                    <Input placeholder="Öğrenci soyadı" value={form.fullName.split(" ")[1] || ""} onChange={(e) => setForm({ ...form, fullName: `${form.fullName.split(" ")[0] || ""} ${e.target.value}`.trim() })} />
+                    <Input
+                      placeholder="Öğrenci soyadı"
+                      value={form.fullName.split(" ")[1] || ""}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          fullName: `${form.fullName.split(" ")[0] || ""} ${
+                            e.target.value
+                          }`.trim(),
+                        })
+                      }
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Doğum Tarihi</Label>
-                  <Input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} />
+                  <Input
+                    type="date"
+                    value={form.birthDate}
+                    onChange={(e) =>
+                      setForm({ ...form, birthDate: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Cinsiyet</Label>
-                  <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
+                  <Select
+                    value={form.gender}
+                    onValueChange={(v) => setForm({ ...form, gender: v })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Seçin" />
                     </SelectTrigger>
@@ -235,35 +376,45 @@ export default function RegistrationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Grup</Label>
-                  <Select>
+                  <Label>Lisans Durumu</Label>
+                  <Select
+                    value={form.isLicensed}
+                    onValueChange={(v) =>
+                      setForm((prev) => ({ ...prev, isLicensed: v }))
+                    }
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Grup seçin" />
+                      <SelectValue placeholder="Seçin" />
                     </SelectTrigger>
                     <SelectContent>
-                      {sports
-                        .find((s) => s.id === selectedSport)
-                        ?.groups.map((group) => (
-                          <SelectItem key={group} value={group}>
-                            {group}
-                          </SelectItem>
-                        ))}
+                      <SelectItem value="true">Lisanslı</SelectItem>
+                      <SelectItem value="false">Lisanssız</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Notlar (Opsiyonel)</Label>
-                  <Textarea placeholder="Sağlık durumu, önceki deneyim vb." value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+                  <Textarea
+                    placeholder="Sağlık durumu, önceki deneyim vb."
+                    value={form.message}
+                    onChange={(e) =>
+                      setForm({ ...form, message: e.target.value })
+                    }
+                  />
                 </div>
               </CardContent>
             </Card>
 
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setStep(1)}>
+              <Button
+                variant="outline"
+                className="flex-1 bg-transparent"
+                onClick={() => setStep(2)}
+              >
                 Geri
               </Button>
-              <Button className="flex-1" onClick={() => setStep(3)}>
+              <Button className="flex-1" onClick={() => setStep(4)}>
                 Devam Et
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
@@ -271,34 +422,62 @@ export default function RegistrationPage() {
           </div>
         )}
 
-        {/* Step 3: Parent Info */}
-        {step === 3 && (
+        {/* Step 4: Parent Info */}
+        {step === 4 && (
           <div className="space-y-4">
             <div>
               <h2 className="text-xl font-bold">Veli Bilgileri</h2>
-              <p className="text-muted-foreground text-sm">İletişim bilgilerini doldurun</p>
+              <p className="text-muted-foreground text-sm">
+                İletişim bilgilerini doldurun
+              </p>
             </div>
 
             <Card className="bg-card/50 border-border/50">
               <CardContent className="p-4 space-y-4">
                 <div className="space-y-2">
                   <Label>Veli Adı Soyadı</Label>
-                  <Input placeholder="Ad Soyad" value={form.guardianName} onChange={(e) => setForm({ ...form, guardianName: e.target.value })} />
+                  <Input
+                    placeholder="Ad Soyad"
+                    value={form.guardianName}
+                    onChange={(e) =>
+                      setForm({ ...form, guardianName: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Telefon</Label>
-                  <Input type="tel" placeholder="0532 123 4567" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  <Input
+                    type="tel"
+                    placeholder="0532 123 4567"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm({ ...form, phone: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>E-posta</Label>
-                  <Input type="email" placeholder="ornek@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  <Input
+                    type="email"
+                    placeholder="ornek@email.com"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Adres</Label>
-                  <Textarea placeholder="Tam adres" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+                  <Textarea
+                    placeholder="Tam adres"
+                    value={form.address}
+                    onChange={(e) =>
+                      setForm({ ...form, address: e.target.value })
+                    }
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -307,7 +486,10 @@ export default function RegistrationPage() {
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <Checkbox id="terms" className="mt-1" />
-                  <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
+                  <label
+                    htmlFor="terms"
+                    className="text-sm text-muted-foreground cursor-pointer"
+                  >
                     Kişisel verilerin işlenmesine ilişkin{" "}
                     <a href="#" className="text-primary underline">
                       aydınlatma metnini
@@ -319,17 +501,21 @@ export default function RegistrationPage() {
             </Card>
 
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 bg-transparent" onClick={() => setStep(2)}>
+              <Button
+                variant="outline"
+                className="flex-1 bg-transparent"
+                onClick={() => setStep(3)}
+              >
                 Geri
               </Button>
-                  <Button className="flex-1" onClick={handleSubmit}>
-                    <Check className="h-4 w-4 mr-1" />
-                    Başvuruyu Gönder
-                  </Button>
+              <Button className="flex-1" onClick={handleSubmit}>
+                <Check className="h-4 w-4 mr-1" />
+                Başvuruyu Gönder
+              </Button>
             </div>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

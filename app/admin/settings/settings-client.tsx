@@ -144,6 +144,60 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
           </CardContent>
         </Card>
 
+        {/* Billing Settings */}
+        <Card className="border-slate-800 bg-slate-900">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Shield className="h-5 w-5 text-blue-400" />
+              Faturalama ve Cron Ayarları
+            </CardTitle>
+            <CardDescription className="text-slate-400">Otomatik tahsilat ve dunning hatırlatmaları</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-slate-300">Otomatik Tahsilat</Label>
+                <p className="text-sm text-slate-500">Abonelikleri dönem sonunda otomatik yenile</p>
+              </div>
+              <Switch
+                checked={getSetting("billing_auto_charge_enabled") === "true"}
+                onCheckedChange={(checked) => updateLocalSetting("billing_auto_charge_enabled", checked.toString())}
+              />
+            </div>
+            <Separator className="bg-slate-700" />
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-slate-300">Dunning (Hatırlatma)</Label>
+                <p className="text-sm text-slate-500">Başarısız ödeme veya beklemede ödemeler için hatırlatma yap</p>
+              </div>
+              <Switch
+                checked={getSetting("dunning_enabled") === "true"}
+                onCheckedChange={(checked) => updateLocalSetting("dunning_enabled", checked.toString())}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Hatırlatma (Gün)</Label>
+                <Input
+                  type="number"
+                  value={getSetting("dunning_reminder_days") || "3"}
+                  onChange={(e) => updateLocalSetting("dunning_reminder_days", e.target.value)}
+                  className="border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Başarısız Say (Gün)</Label>
+                <Input
+                  type="number"
+                  value={getSetting("dunning_fail_days") || "7"}
+                  onChange={(e) => updateLocalSetting("dunning_fail_days", e.target.value)}
+                  className="border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Trial Settings */}
         <Card className="border-slate-800 bg-slate-900">
           <CardHeader>

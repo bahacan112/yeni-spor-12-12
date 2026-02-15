@@ -35,7 +35,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loginType, setLoginType] = useState<"school" | "instructor">("school");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,11 +73,11 @@ export default function LoginPage() {
         return;
       }
 
-      if (loginType === "school") {
-        router.push("/dashboard");
-      } else {
+      if (userRole === "instructor") {
         router.push("/instructor");
+        return;
       }
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Giriş yapılırken bir hata oluştu.");
       setIsLoading(false);
@@ -94,27 +93,6 @@ export default function LoginPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs
-          value={loginType}
-          onValueChange={(v) => setLoginType(v as "school" | "instructor")}
-          className="mb-6"
-        >
-          <TabsList className="grid w-full grid-cols-2 bg-slate-800">
-            <TabsTrigger
-              value="school"
-              className="data-[state=active]:bg-blue-600"
-            >
-              Okul Girişi
-            </TabsTrigger>
-            <TabsTrigger
-              value="instructor"
-              className="data-[state=active]:bg-emerald-600"
-            >
-              Eğitmen Girişi
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
         {error && (
           <Alert
             variant="destructive"
@@ -128,16 +106,14 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-slate-300">
-              {loginType === "school" ? "E-posta" : "Kullanıcı Adı"}
+              E-posta
             </Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 id="email"
-                type={loginType === "school" ? "email" : "text"}
-                placeholder={
-                  loginType === "school" ? "ornek@akademi.com" : "kullanici.adi"
-                }
+                type="email"
+                placeholder="ornek@akademi.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10 bg-slate-800 border-slate-700 text-white"
@@ -187,11 +163,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             disabled={isLoading}
-            className={`w-full ${
-              loginType === "school"
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-emerald-600 hover:bg-emerald-700"
-            }`}
+            className="w-full bg-blue-600 hover:bg-blue-700"
           >
             {isLoading ? (
               <>
@@ -207,23 +179,15 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {loginType === "school" && (
-          <p className="mt-6 text-center text-sm text-slate-400">
-            Hesabınız yok mu?{" "}
-            <Link
-              href="/auth/register"
-              className="text-blue-500 hover:text-blue-400"
-            >
-              Kayıt Ol
-            </Link>
-          </p>
-        )}
-
-        {loginType === "instructor" && (
-          <p className="mt-6 text-center text-sm text-slate-400">
-            Giriş bilgilerinizi okul yöneticinizden alabilirsiniz.
-          </p>
-        )}
+        <p className="mt-6 text-center text-sm text-slate-400">
+          Hesabınız yok mu?{" "}
+          <Link
+            href="/auth/register"
+            className="text-blue-500 hover:text-blue-400"
+          >
+            Kayıt Ol
+          </Link>
+        </p>
       </CardContent>
     </Card>
   );

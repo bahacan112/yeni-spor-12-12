@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Package,
   Plus,
@@ -80,6 +80,23 @@ export default function ProductsClient({
     images: [],
   });
   const supabase = createClient();
+  const [hasEcommerceFeature, setHasEcommerceFeature] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("tenant_subscriptions")
+        .select("status, plan:platform_plans(features)")
+        .eq("tenant_id", tenantId)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+      const features = (data as any)?.plan?.features || [];
+      setHasEcommerceFeature(
+        Array.isArray(features) ? features.includes("ecommerce") : true
+      );
+    })();
+  }, [tenantId]);
 
   const filteredProducts = products.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
@@ -115,6 +132,7 @@ export default function ProductsClient({
           <SheetTrigger asChild>
             <Button
               size="sm"
+              disabled={!hasEcommerceFeature}
               onClick={() => {
                 setEditingProduct(null);
                 setForm({
@@ -142,6 +160,14 @@ export default function ProductsClient({
               </SheetTitle>
             </SheetHeader>
             <div className="mt-4 space-y-4">
+              {!hasEcommerceFeature && (
+                <Card className="bg-amber-900/20 border-amber-700">
+                  <CardContent className="p-3 text-amber-200">
+                    Paketiniz e-ticaret özelliğini içermiyor. Ürün
+                    ekleyemezsiniz.
+                  </CardContent>
+                </Card>
+              )}
               <div className="space-y-2">
                 <Label>Ürün Görseli</Label>
                 <ImageUploader

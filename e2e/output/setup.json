@@ -1,0 +1,41 @@
+{
+  "status": "Başlanmadı",
+  "currentStepIndex": 0,
+  "steps": [
+    {
+      "key": "branches",
+      "completed": false,
+      "count": 0
+    },
+    {
+      "key": "instructors",
+      "completed": false,
+      "count": 0
+    },
+    {
+      "key": "sports",
+      "completed": false,
+      "count": 0
+    },
+    {
+      "key": "groups",
+      "completed": false,
+      "count": 0
+    },
+    {
+      "key": "venues",
+      "completed": false,
+      "count": 0
+    },
+    {
+      "key": "students",
+      "completed": false,
+      "count": 0
+    },
+    {
+      "key": "trainings",
+      "completed": false,
+      "count": 0
+    }
+  ]
+}

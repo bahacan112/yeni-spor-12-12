@@ -101,6 +101,7 @@ export function StudentDetailClient({
     override_amount?: number;
     discount_percent?: number;
   } | null>(null);
+  const [branchName, setBranchName] = useState<string>("");
   useEffect(() => {
     const load = async () => {
       try {
@@ -125,6 +126,19 @@ export function StudentDetailClient({
     };
     load();
   }, [student.id, student.branchId]);
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const { data } = await supabase
+          .from("branches")
+          .select("name")
+          .eq("id", student.branchId)
+          .maybeSingle();
+        if (data?.name) setBranchName(String(data.name));
+      } catch {}
+    };
+    run();
+  }, [student.branchId]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("tr-TR", {
@@ -310,7 +324,15 @@ export function StudentDetailClient({
                     #{student.studentNo}
                   </p>
                 </div>
-                {getStatusBadge(student.status)}
+                <div className="flex items-center gap-2">
+                  {branchName && (
+                    <Badge variant="outline" className="text-xs">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {branchName}
+                    </Badge>
+                  )}
+                  {getStatusBadge(student.status)}
+                </div>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Plus,
   Calendar,
@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Training, Instructor, Group, Venue } from "@/lib/types";
+import { Training, Instructor, Group, Venue, Branch } from "@/lib/types";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -46,6 +46,7 @@ interface TrainingsClientProps {
   instructors: Instructor[];
   groups: Group[];
   venues: Venue[];
+  branches: Branch[];
   tenantId: string;
 }
 
@@ -54,6 +55,7 @@ export function TrainingsClient({
   instructors,
   groups,
   venues,
+  branches,
   tenantId,
 }: TrainingsClientProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -110,6 +112,7 @@ export function TrainingsClient({
   }, [attendanceData]);
 
   const trainings = initialTrainings;
+  const [groupsOptions, setGroupsOptions] = useState<Group[]>(groups);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("tr-TR", {
@@ -124,6 +127,38 @@ export function TrainingsClient({
     newDate.setDate(newDate.getDate() + direction);
     setSelectedDate(newDate);
   };
+
+  useEffect(() => {
+    setGroupsOptions(groups);
+    const loadFallbackGroups = async () => {
+      if (groups && groups.length > 0) return;
+      const { data } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .eq("status", "active")
+        .order("name");
+      const mapped = (data || []).map((g: any) => ({
+        id: g.id,
+        tenantId: g.tenant_id,
+        branchId: g.branch_id,
+        name: g.name,
+        description: g.description,
+        sportType: g.sport_type,
+        ageGroup: g.age_group,
+        capacity: g.capacity,
+        monthlyFee: g.monthly_fee ?? undefined,
+        instructorId: g.instructor_id ?? undefined,
+        schedule: g.schedule ?? undefined,
+        status: g.status,
+        studentCount: g.student_count ?? undefined,
+        createdAt: g.created_at,
+        updatedAt: g.updated_at,
+      })) as Group[];
+      setGroupsOptions(mapped);
+    };
+    loadFallbackGroups();
+  }, [groups, supabase, tenantId]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -181,18 +216,13 @@ export function TrainingsClient({
     setAttendanceData({});
     setIsAttendanceOpen(true);
     if (training.groupId) {
-      const { data, error } = await supabase
-        .from("student_groups")
-        .select("student:students(*)")
-        .eq("group_id", training.groupId)
-        .eq("status", "active");
-      if (error) {
-        toast.error("Öğrenciler alınamadı");
-        setTrainingStudents([]);
-        return;
-      }
-      const mapped = (data || [])
-        .map((sg: any) => sg.student)
+      // 1) Try training_rosters snapshot first
+      const { data: roster, error: rosterErr } = await supabase
+        .from("training_rosters")
+        .select("students(*)")
+        .eq("training_id", training.id);
+      let mapped = (roster || [])
+        .map((row: any) => row.students)
         .filter((s: any) => s)
         .map((s: any) => ({
           id: s.id,
@@ -201,6 +231,46 @@ export function TrainingsClient({
           status: s.status,
         }))
         .filter((s: any) => s.status === "active");
+      // 2) Fallback to live group membership if roster empty
+      if (!mapped.length) {
+        const { data, error } = await supabase
+          .from("student_groups")
+          .select("student_id, students!student_groups_student_id_fkey(*)")
+          .eq("group_id", training.groupId)
+          .eq("status", "active");
+        if (error) {
+          toast.error("Öğrenciler alınamadı");
+          setTrainingStudents([]);
+          return;
+        }
+        mapped = (data || [])
+          .map((sg: any) => sg.students)
+          .filter((s: any) => s)
+          .map((s: any) => ({
+            id: s.id,
+            fullName: s.full_name,
+            photoUrl: s.photo_url,
+            status: s.status,
+          }))
+          .filter((s: any) => s.status === "active");
+      }
+      // Fallback: if group has no active members, list active students in training's branch
+      if (!mapped.length) {
+        const { data: fallback, error: fbErr } = await supabase
+          .from("students")
+          .select("id, full_name, photo_url, status")
+          .eq("tenant_id", tenantId)
+          .eq("status", "active")
+          .eq("branch_id", training.branchId);
+        if (!fbErr && fallback) {
+          mapped = (fallback || []).map((s: any) => ({
+            id: s.id,
+            fullName: s.full_name,
+            photoUrl: s.photo_url,
+            status: s.status,
+          }));
+        }
+      }
       setTrainingStudents(mapped);
     } else {
       const { data, error } = await supabase
@@ -365,12 +435,12 @@ export function TrainingsClient({
                     <SelectValue placeholder="Grup seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {groups?.map((group) => (
+                    {groupsOptions?.map((group) => (
                       <SelectItem key={group.id} value={group.id}>
                         {group.name}
                       </SelectItem>
                     ))}
-                    {!groups?.length && (
+                    {!groupsOptions?.length && (
                       <SelectItem value="none" disabled>
                         Grup bulunamadı
                       </SelectItem>
@@ -578,6 +648,17 @@ export function TrainingsClient({
                     </div>
 
                     <div className="mt-3 flex flex-wrap items-center gap-3">
+                      {(() => {
+                        const b = branches.find(
+                          (br) => br.id === training.branchId
+                        );
+                        return b ? (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            <span>{b.name}</span>
+                          </div>
+                        ) : null;
+                      })()}
                       {training.instructor && (
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
@@ -841,12 +922,12 @@ export function TrainingsClient({
                     <SelectValue placeholder="Grup seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {groups?.map((group) => (
+                    {groupsOptions?.map((group) => (
                       <SelectItem key={group.id} value={group.id}>
                         {group.name}
                       </SelectItem>
                     ))}
-                    {!groups?.length && (
+                    {!groupsOptions?.length && (
                       <SelectItem value="none" disabled>
                         Grup bulunamadı
                       </SelectItem>

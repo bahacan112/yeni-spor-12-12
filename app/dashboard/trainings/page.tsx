@@ -1,5 +1,7 @@
 import { getTrainingsData } from "@/lib/api/trainings";
 import { TrainingsClient } from "./trainings-client";
+import { getSetupStatus } from "@/lib/api/setup";
+import { redirect } from "next/navigation";
 
 export default async function TrainingsPage({
   searchParams,
@@ -9,7 +11,11 @@ export default async function TrainingsPage({
   const sp = await searchParams;
   const raw = sp?.branch;
   const branchId = Array.isArray(raw) ? raw[0] : raw;
-  const { trainings, instructors, groups, venues, tenantId } =
+  const setup = await getSetupStatus();
+  if (!setup.isComplete) {
+    redirect("/dashboard/setup");
+  }
+  const { trainings, instructors, groups, venues, branches, tenantId } =
     await getTrainingsData(branchId);
   return (
     <TrainingsClient
@@ -17,6 +23,7 @@ export default async function TrainingsPage({
       instructors={instructors}
       groups={groups}
       venues={venues}
+      branches={branches}
       tenantId={tenantId}
     />
   );

@@ -194,7 +194,70 @@ export function PaymentsClient({ payments }: PaymentsClientProps) {
                         <h3 className="font-semibold text-white">{payment.tenant?.name}</h3>
                         {getStatusBadge(payment.status)}
                         </div>
-                        <p className="text-sm text-slate-400">{payment.description}</p>
+                        {(() => {
+                          let meta: any = {};
+                          try {
+                            meta = JSON.parse(String(payment.description || "{}"));
+                          } catch {
+                            meta = {};
+                          }
+                          const invoice = meta?.invoice || {};
+                          const hasStructured =
+                            typeof meta === "object" &&
+                            (meta.planName || Object.keys(invoice).length > 0);
+                          if (!hasStructured) {
+                            return (
+                              <p className="text-sm text-slate-400">
+                                {payment.description}
+                              </p>
+                            );
+                          }
+                          return (
+                            <div className="text-sm text-slate-300">
+                              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                {meta.planName && (
+                                  <span className="text-slate-200">
+                                    Paket:{" "}
+                                    <span className="font-medium">
+                                      {meta.planName}
+                                    </span>
+                                  </span>
+                                )}
+                                {typeof meta.amount === "number" && (
+                                  <span>
+                                    Tutar:{" "}
+                                    <span className="font-medium">
+                                      {Number(meta.amount).toLocaleString(
+                                        "tr-TR"
+                                      )}{" "}
+                                      TL
+                                    </span>
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-slate-400">
+                                {invoice.companyName && (
+                                  <span>Firma: {invoice.companyName}</span>
+                                )}
+                                {invoice.taxNo && (
+                                  <span>Vergi No: {invoice.taxNo}</span>
+                                )}
+                                {invoice.email && (
+                                  <span>E-posta: {invoice.email}</span>
+                                )}
+                                {invoice.phone && (
+                                  <span>Telefon: {invoice.phone}</span>
+                                )}
+                                {invoice.city && <span>İl: {invoice.city}</span>}
+                              </div>
+                              {invoice.address && (
+                                <div className="mt-1 text-slate-400">
+                                  Adres: {invoice.address}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         <div className="mt-1 flex items-center gap-4 text-xs text-slate-500">
                         {payment.invoiceNo && <span>Fatura: {payment.invoiceNo}</span>}
                         <span>{new Date(payment.paidAt).toLocaleString("tr-TR")}</span>

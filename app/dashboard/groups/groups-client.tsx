@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Users,
   Search,
@@ -25,6 +26,16 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -52,6 +63,7 @@ interface GroupsClientProps {
   instructors: Instructor[];
   branches: Branch[];
   tenantId: string;
+  sports?: Array<{ id: string; name: string; slug?: string }>;
 }
 
 export function GroupsClient({
@@ -59,7 +71,9 @@ export function GroupsClient({
   instructors,
   branches,
   tenantId,
+  sports = [],
 }: GroupsClientProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSport, setSelectedSport] = useState<string>("all");
   const [isNewGroupOpen, setIsNewGroupOpen] = useState(false);
@@ -91,6 +105,13 @@ export function GroupsClient({
   const [editBranchId, setEditBranchId] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
+  // Delete States
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
+  const [deleteStudentCount, setDeleteStudentCount] = useState<number>(0);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState<string>("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleEditClick = (e: React.MouseEvent, group: Group) => {
     e.preventDefault(); // Prevent link navigation
     e.stopPropagation();
@@ -107,6 +128,27 @@ export function GroupsClient({
     setEditBranchId(group.branchId || "");
     setEditDescription(group.description || "");
     setIsEditGroupOpen(true);
+  };
+
+  const handleDeleteClick = async (e: React.MouseEvent, group: Group) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDeletingGroup(group);
+    setIsDeleteOpen(true);
+    setDeleteConfirmInput("");
+    try {
+      const { count, error } = await supabase
+        .from("student_groups")
+        .select("*", { count: "exact", head: true })
+        .eq("group_id", group.id);
+      if (!error) {
+        setDeleteStudentCount(count || 0);
+      } else {
+        setDeleteStudentCount(0);
+      }
+    } catch {
+      setDeleteStudentCount(0);
+    }
   };
 
   const handleUpdateGroup = async () => {
@@ -146,20 +188,55 @@ export function GroupsClient({
     location.reload();
   };
 
+  const performDeleteGroup = async () => {
+    if (!deletingGroup) return;
+    const expected = String(deleteStudentCount);
+    if (deleteConfirmInput.trim() !== expected) {
+      toast.error("Onay için öğrenci sayısını doğru girin");
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await supabase
+        .from("student_groups")
+        .delete()
+        .eq("group_id", deletingGroup.id);
+      const { error } = await supabase
+        .from("groups")
+        .delete()
+        .eq("id", deletingGroup.id);
+      if (error) throw error;
+      toast.success("Grup silindi");
+      setIsDeleteOpen(false);
+      setDeletingGroup(null);
+      setDeleteConfirmInput("");
+      router.refresh();
+    } catch (err) {
+      console.error("Group delete error:", err);
+      toast.error("Grup silinemedi");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const groups = initialGroups;
 
   const filteredGroups = groups.filter((group) => {
     const matchesSearch =
       group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.sportType?.toLowerCase().includes(searchQuery.toLowerCase());
+      (group.sport?.name || group.sportType || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
     const matchesSport =
-      selectedSport === "all" || group.sportType === selectedSport;
+      selectedSport === "all" ||
+      String(group.sportId || "") === String(selectedSport);
     return matchesSearch && matchesSport;
   });
 
-  const sportTypes = [
-    ...new Set(groups.map((g) => g.sportType).filter(Boolean)),
-  ];
+  const sportTypes =
+    sports.length > 0
+      ? sports.map((s) => s.name)
+      : [...new Set(groups.map((g) => g.sportType).filter(Boolean))];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("tr-TR", {
@@ -223,11 +300,11 @@ export function GroupsClient({
                     <SelectValue placeholder="Branş seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="basketball">Basketbol</SelectItem>
-                    <SelectItem value="football">Futbol</SelectItem>
-                    <SelectItem value="volleyball">Voleybol</SelectItem>
-                    <SelectItem value="swimming">Yüzme</SelectItem>
-                    <SelectItem value="tennis">Tenis</SelectItem>
+                    {sports.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -363,12 +440,55 @@ export function GroupsClient({
                     toast.error("Tarih aralığı geçersiz");
                     return;
                   }
+                  const { data: tenantRow } = await supabase
+                    .from("tenants")
+                    .select("subscription_status, is_limited, max_groups")
+                    .eq("id", tenantId)
+                    .single();
+                  const { count: groupCount } = await supabase
+                    .from("groups")
+                    .select("id", { count: "exact", head: true })
+                    .eq("tenant_id", tenantId);
+                  const { data: activeSub } = await supabase
+                    .from("tenant_subscriptions")
+                    .select("status, plan:platform_plans(max_groups)")
+                    .eq("tenant_id", tenantId)
+                    .eq("status", "active")
+                    .limit(1)
+                    .maybeSingle();
+
+                  const isLimited = Boolean(tenantRow?.is_limited);
+                  const subStatus = String(
+                    tenantRow?.subscription_status || "active"
+                  );
+                  const configuredMax = Number(tenantRow?.max_groups ?? 0) || 0;
+                  const planMax =
+                    Number((activeSub as any)?.plan?.max_groups ?? 0) || 0;
+                  let allowedMax = configuredMax;
+                  if (!isLimited && subStatus === "active") {
+                    allowedMax =
+                      configuredMax || planMax || Number.POSITIVE_INFINITY;
+                  }
+                  if (isLimited || subStatus !== "active") {
+                    // When limited or expired, a missing max implies 0
+                    allowedMax = configuredMax || 0;
+                  }
+                  if (
+                    groupCount !== null &&
+                    allowedMax !== Number.POSITIVE_INFINITY &&
+                    (groupCount || 0) >= allowedMax
+                  ) {
+                    toast.error(
+                      "Grup limiti aşıldı. Paket veya abonelik sürenizi güncelleyin."
+                    );
+                    return;
+                  }
                   const { error } = await supabase.from("groups").insert({
                     tenant_id: tenantId,
                     branch_id: branchId,
                     name: groupName,
                     description,
-                    sport_type: sportType || null,
+                    sport_id: sportType || null,
                     birth_date_from: birthDateFrom || null,
                     birth_date_to: birthDateTo || null,
                     license_requirement: licenseRequirement || "any",
@@ -414,17 +534,29 @@ export function GroupsClient({
         >
           Tümü
         </Button>
-        {sportTypes.map((sport) => (
-          <Button
-            key={sport}
-            variant={selectedSport === sport ? "default" : "outline"}
-            size="sm"
-            className="rounded-full whitespace-nowrap"
-            onClick={() => setSelectedSport(sport || "all")}
-          >
-            {sport}
-          </Button>
-        ))}
+        {sports.length
+          ? sports.map((s) => (
+              <Button
+                key={s.id}
+                variant={selectedSport === s.id ? "default" : "outline"}
+                size="sm"
+                className="rounded-full whitespace-nowrap"
+                onClick={() => setSelectedSport(s.id)}
+              >
+                {s.name}
+              </Button>
+            ))
+          : sportTypes.map((sport) => (
+              <Button
+                key={sport}
+                variant={selectedSport === sport ? "default" : "outline"}
+                size="sm"
+                className="rounded-full whitespace-nowrap"
+                onClick={() => setSelectedSport(sport || "all")}
+              >
+                {sport}
+              </Button>
+            ))}
       </div>
 
       {/* Group List */}
@@ -446,6 +578,15 @@ export function GroupsClient({
                         <div>
                           <p className="font-semibold">{group.name}</p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {(() => {
+                              const b = branches.find(
+                                (br) => br.id === group.branchId
+                              );
+                              return b ? <span>{b.name}</span> : null;
+                            })()}
+                            {branches.find(
+                              (br) => br.id === group.branchId
+                            ) && <span>•</span>}
                             <span>{group.sportType}</span>
                             <span>•</span>
                             <span>
@@ -486,7 +627,10 @@ export function GroupsClient({
                             </DropdownMenuItem>
                             <DropdownMenuItem>Öğrenci Ekle</DropdownMenuItem>
                             <DropdownMenuItem>Program Düzenle</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={(e) => handleDeleteClick(e, group)}
+                            >
                               Sil
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -590,11 +734,11 @@ export function GroupsClient({
                   <SelectValue placeholder="Branş seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="basketball">Basketbol</SelectItem>
-                  <SelectItem value="football">Futbol</SelectItem>
-                  <SelectItem value="volleyball">Voleybol</SelectItem>
-                  <SelectItem value="swimming">Yüzme</SelectItem>
-                  <SelectItem value="tennis">Tenis</SelectItem>
+                  {sports.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -709,6 +853,38 @@ export function GroupsClient({
           </div>
         </SheetContent>
       </Sheet>
+      {/* Delete Group Dialog */}
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Grubu Sil</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu grupta {deleteStudentCount} öğrenci bağı mevcut. Onaylarsanız
+              tüm öğrenci bağları koparılacak ve grup silinecek.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Onay için öğrenci sayısını yazın</Label>
+            <Input
+              placeholder={`${deleteStudentCount}`}
+              value={deleteConfirmInput}
+              onChange={(e) => setDeleteConfirmInput(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={performDeleteGroup}
+              disabled={
+                isDeleting ||
+                deleteConfirmInput.trim() !== String(deleteStudentCount)
+              }
+            >
+              {isDeleting ? "Siliniyor..." : "Onayla ve Sil"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

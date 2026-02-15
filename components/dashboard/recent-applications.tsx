@@ -72,6 +72,18 @@ export function RecentApplications({ applications }: RecentApplicationsProps) {
                       {app.preferredGroup.name}
                     </Badge>
                   )}
+                  {app.sport?.name && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        Branş: {app.sport.name}
+                      </Badge>
+                      {app.sport.isActive === false && (
+                        <Badge className="bg-red-500/20 text-red-500 hover:bg-red-500/30 text-[10px]">
+                          Pasif
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   {getStatusBadge(app.status)}

@@ -98,6 +98,8 @@ export function DuesClient({
   };
 
   const getEffectiveStatus = (d: MonthlyDue) => {
+    const snap = String(d.snapshotState || "");
+    if (snap) return snap;
     if (d.status === "paid") return "paid";
     const dd = normalizeDueDate(d.dueDate);
     const daysLeft = differenceInCalendarDays(dd, new Date());
@@ -111,11 +113,17 @@ export function DuesClient({
     const matchesSearch = studentName
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
+    const eff = getEffectiveStatus(due);
     const matchesStatus =
       statusFilter === "all" ||
-      (statusFilter === "overdue"
-        ? getEffectiveStatus(due) === "overdue"
-        : due.status === statusFilter);
+      (statusFilter === "overdue" ? eff === "overdue" : false) ||
+      (statusFilter === "pending" ? eff === "pending" : false) ||
+      (statusFilter === "partial" ? eff === "partial" : false) ||
+      (statusFilter === "paid" ? due.status === "paid" : false) ||
+      (statusFilter === "due_today" ? eff === "due_today" : false) ||
+      (statusFilter === "upcoming"
+        ? ["upcoming_3", "upcoming_2", "upcoming_1"].includes(eff)
+        : false);
     // Note: Filtering by group requires joining student_groups or similar.
     // For now we might skip group filtering on client side if group info is not directly in 'due' or 'student'
     // But typically we'd fetch that. Assuming simple filter for now or skipping group check if not available.
@@ -138,6 +146,12 @@ export function DuesClient({
     (d) => getEffectiveStatus(d) === "overdue"
   ).length;
   const partialCount = dues.filter((d) => d.status === "partial").length;
+  const dueTodayCount = dues.filter(
+    (d) => getEffectiveStatus(d) === "due_today"
+  ).length;
+  const upcomingCount = dues.filter((d) =>
+    ["upcoming_3", "upcoming_2", "upcoming_1"].includes(getEffectiveStatus(d))
+  ).length;
   const collectionRate =
     totalDues > 0 ? Math.round((paidAmount / totalDues) * 100) : 0;
 
@@ -369,13 +383,6 @@ export function DuesClient({
                         const json = await res.json().catch(() => ({}));
                         if (!res.ok)
                           throw new Error(json.error || "Oluşturulamadı");
-                        if (bulkDueDate) {
-                          await supabase
-                            .from("monthly_dues")
-                            .update({ due_date: bulkDueDate })
-                            .eq("branch_id", branchId)
-                            .eq("due_month", firstDay);
-                        }
                         toast.success("Aidatlar oluşturuldu");
                       } else {
                         const { data: sgs, error: sgErr } = await supabase
@@ -397,7 +404,7 @@ export function DuesClient({
                               due_month: firstDay,
                               amount: 0,
                               paid_amount: 0,
-                              due_date: bulkDueDate || firstDay,
+                              due_date: firstDay,
                               status: "pending",
                             },
                             { onConflict: "student_id,due_month" }
@@ -606,6 +613,18 @@ export function DuesClient({
             Gecikmiş ({overdueCount})
           </TabsTrigger>
           <TabsTrigger
+            value="due_today"
+            className="data-[state=active]:bg-slate-700"
+          >
+            Bugün ({dueTodayCount})
+          </TabsTrigger>
+          <TabsTrigger
+            value="upcoming"
+            className="data-[state=active]:bg-slate-700"
+          >
+            Yaklaşan ({upcomingCount})
+          </TabsTrigger>
+          <TabsTrigger
             value="pending"
             className="data-[state=active]:bg-slate-700"
           >
@@ -652,6 +671,12 @@ export function DuesClient({
                     </SelectItem>
                     <SelectItem value="overdue" className="text-white">
                       Gecikmiş
+                    </SelectItem>
+                    <SelectItem value="due_today" className="text-white">
+                      Bugün Vade
+                    </SelectItem>
+                    <SelectItem value="upcoming" className="text-white">
+                      Yaklaşan (3/2/1)
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -769,6 +794,151 @@ export function DuesClient({
               </Card>
             ))}
             {filteredDues.length === 0 && (
+              <div className="text-center p-8 text-slate-400">
+                Kayıt bulunamadı.
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="due_today" className="space-y-4">
+          <Card className="border-amber-500/20 bg-amber-500/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 text-amber-400">
+                <Clock className="h-5 w-5" />
+                <div>
+                  <p className="font-medium">Bugün Vadesi Olanlar</p>
+                  <p className="text-sm text-amber-400/70">
+                    Bugün son ödeme tarihi olan öğrenciler.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <div className="space-y-3">
+            {dues
+              .filter((d) => getEffectiveStatus(d) === "due_today")
+              .map((due) => (
+                <Card key={due.id} className="border-slate-800 bg-slate-900">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage
+                          src={due.student?.photoUrl || "/placeholder.svg"}
+                        />
+                        <AvatarFallback
+                          name={due.student?.fullName}
+                          className="bg-amber-500/20 text-amber-400"
+                        />
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-white truncate">
+                          {due.student?.fullName}
+                        </h3>
+                        <p className="text-sm text-slate-400">
+                          Son ödeme: {formatDateSafe(due.dueDate)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <Badge className="bg-amber-500/20 text-amber-400 mb-1">
+                          Bugün
+                        </Badge>
+                        <p className="font-semibold text-white">
+                          {(
+                            (due.computedAmount ?? due.amount ?? 0) -
+                            (due.paidAmount ?? 0)
+                          ).toLocaleString("tr-TR")}{" "}
+                          TL
+                        </p>
+                      </div>
+                      {due.status !== "paid" && (
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => openPaymentSheet(due)}
+                        >
+                          <CreditCard className="mr-1 h-3 w-3" />
+                          Ödeme Al
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            {dueTodayCount === 0 && (
+              <div className="text-center p-8 text-slate-400">
+                Kayıt bulunamadı.
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="upcoming" className="space-y-4">
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 text-blue-400">
+                <Clock className="h-5 w-5" />
+                <div>
+                  <p className="font-medium">Yaklaşan Ödemeler</p>
+                  <p className="text-sm text-blue-400/70">
+                    Önümüzdeki 3 gün içinde vadesi yaklaşan öğrenciler.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <div className="space-y-3">
+            {dues
+              .filter((d) =>
+                ["upcoming_3", "upcoming_2", "upcoming_1"].includes(
+                  getEffectiveStatus(d)
+                )
+              )
+              .map((due) => (
+                <Card key={due.id} className="border-slate-800 bg-slate-900">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage
+                          src={due.student?.photoUrl || "/placeholder.svg"}
+                        />
+                        <AvatarFallback
+                          name={due.student?.fullName}
+                          className="bg-blue-500/20 text-blue-400"
+                        />
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-white truncate">
+                          {due.student?.fullName}
+                        </h3>
+                        <p className="text-sm text-slate-400">
+                          Son ödeme: {formatDateSafe(due.dueDate)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-white">
+                          {(
+                            (due.computedAmount ?? due.amount ?? 0) -
+                            (due.paidAmount ?? 0)
+                          ).toLocaleString("tr-TR")}{" "}
+                          TL
+                        </p>
+                      </div>
+                      {due.status !== "paid" && (
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => openPaymentSheet(due)}
+                        >
+                          <CreditCard className="mr-1 h-3 w-3" />
+                          Ödeme Al
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            {upcomingCount === 0 && (
               <div className="text-center p-8 text-slate-400">
                 Kayıt bulunamadı.
               </div>

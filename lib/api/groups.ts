@@ -26,10 +26,11 @@ export async function getGroupsData(branchId?: string) {
 
   const tenantId = userData.tenant_id;
 
-  // Fetch groups with instructor
   let groupsQuery = supabase
     .from("groups")
-    .select("*, instructor:instructors(*)")
+    .select(
+      "*, instructor:instructors!fk_groups_instructor(*), sport:sports!fk_groups_sport(*)"
+    )
     .eq("tenant_id", tenantId)
     .order("name");
   if (branchId) {
@@ -72,9 +73,18 @@ export async function getGroupsData(branchId?: string) {
       return {
         id: group.id,
         tenantId: group.tenant_id,
+        branchId: group.branch_id,
         name: group.name,
         description: group.description,
-        sportType: group.sport_type,
+        sportType: group.sport?.name || group.sport_type,
+        sportId: group.sport?.id,
+        sport: group.sport
+          ? {
+              id: group.sport.id,
+              name: group.sport.name,
+              slug: group.sport.slug,
+            }
+          : undefined,
         birthDateFrom: group.birth_date_from,
         birthDateTo: group.birth_date_to,
         licenseRequirement: group.license_requirement,
@@ -137,11 +147,25 @@ export async function getGroupsData(branchId?: string) {
     updatedAt: b.updated_at,
   })) as Branch[];
 
+  const { data: sports } = await supabase
+    .from("sports")
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .eq("is_active", true)
+    .order("sort_order")
+    .order("name");
+  const formattedSports = (sports || []).map((s: any) => ({
+    id: String(s.id),
+    name: String(s.name),
+    slug: s.slug ? String(s.slug) : undefined,
+  }));
+
   return {
     groups: groupsWithCounts as Group[],
     instructors: formattedInstructors as any[],
     branches: formattedBranches,
     tenantId,
+    sports: formattedSports,
   };
 }
 
@@ -173,7 +197,7 @@ export async function getGroupDetails(groupId: string) {
   // Fetch group details
   const { data: group, error: groupError } = await supabase
     .from("groups")
-    .select("*, instructor:instructors(*)")
+    .select("*, instructor:instructors!fk_groups_instructor(*)")
     .eq("id", groupId)
     .eq("tenant_id", tenantId)
     .single();
@@ -184,21 +208,29 @@ export async function getGroupDetails(groupId: string) {
   }
 
   // Fetch students in group
-  const { data: studentGroups, error: studentsError } = await supabase
+  const { data: studentGroupRows, error: sgError } = await supabase
     .from("student_groups")
-    .select("*, student:students(*)")
+    .select("student_id")
     .eq("group_id", groupId)
     .eq("status", "active");
-
-  if (studentsError) {
-    console.error("Error fetching group students:", studentsError);
+  if (sgError) {
+    console.error("Error fetching group students:", sgError);
   }
-
-  const students = (studentGroups || [])
-    .map((sg: any) => {
-      const s = sg.student;
-      if (!s) return null;
-      return {
+  const studentIds = Array.from(
+    new Set(
+      (studentGroupRows || []).map((r: any) => r.student_id).filter(Boolean)
+    )
+  );
+  let students: Student[] = [];
+  if (studentIds.length > 0) {
+    const { data: studentRows, error: sErr } = await supabase
+      .from("students")
+      .select("*")
+      .in("id", studentIds);
+    if (sErr) {
+      console.error("Error fetching students:", sErr);
+    } else {
+      students = (studentRows || []).map((s: any) => ({
         id: s.id,
         tenantId: s.tenant_id,
         branchId: s.branch_id,
@@ -215,9 +247,9 @@ export async function getGroupDetails(groupId: string) {
         status: s.status,
         createdAt: s.created_at,
         updatedAt: s.updated_at,
-      } as Student;
-    })
-    .filter((s) => s) as Student[];
+      })) as Student[];
+    }
+  }
 
   // Fetch trainings
   const { data: trainings, error: trainingsError } = await supabase
@@ -261,7 +293,15 @@ export async function getGroupDetails(groupId: string) {
     branchId: group.branch_id,
     name: group.name,
     description: group.description,
-    sportType: group.sport_type,
+    sportType: group.sport?.name || group.sport_type,
+    sportId: group.sport?.id,
+    sport: group.sport
+      ? {
+          id: group.sport.id,
+          name: group.sport.name,
+          slug: group.sport.slug,
+        }
+      : undefined,
     birthDateFrom: group.birth_date_from,
     birthDateTo: group.birth_date_to,
     licenseRequirement: group.license_requirement,

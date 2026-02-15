@@ -31,7 +31,8 @@ export async function getApplicationsData() {
     .select(
       `
       *,
-      preferredGroup:groups(name)
+      preferredGroup:groups(name),
+      sport:sports(*)
     `
     )
     .eq("tenant_id", tenantId)
@@ -56,6 +57,16 @@ export async function getApplicationsData() {
       tenantId: app.tenant_id,
       branchId: app.branch_id,
       registrationLinkId: app.registration_link_id,
+      sportId: app.sport_id || undefined,
+      sportName: app.sport_name || undefined,
+      sport: app.sport
+        ? {
+            id: app.sport.id,
+            name: app.sport.name,
+            slug: app.sport.slug,
+            isActive: app.sport.is_active,
+          }
+        : undefined,
       fullName: app.full_name,
       birthDate: app.birth_date,
       gender: app.gender,

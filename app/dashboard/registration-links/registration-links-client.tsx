@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import {
   Link2,
@@ -73,6 +73,10 @@ export default function RegistrationLinksClient({
     link: null,
   });
   const supabase = createClient();
+  const [sportsOptions, setSportsOptions] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [selectedSport, setSelectedSport] = useState<string>("all");
   const [form, setForm] = useState<{
     title: string;
     code: string;
@@ -93,6 +97,24 @@ export default function RegistrationLinksClient({
     open: boolean;
     id: string | null;
   }>({ open: false, id: null });
+
+  useEffect(() => {
+    const loadSports = async () => {
+      const { data } = await supabase
+        .from("sports")
+        .select("id,name")
+        .eq("tenant_id", tenantId)
+        .eq("is_active", true)
+        .order("sort_order")
+        .order("name");
+      const items = (data || []).map((s: any) => ({
+        id: String(s.id),
+        name: String(s.name),
+      }));
+      setSportsOptions(items);
+    };
+    loadSports();
+  }, [tenantId, supabase]);
 
   const copyLink = (id: string, code: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/kayit/${code}`);
@@ -163,16 +185,17 @@ export default function RegistrationLinksClient({
 
               <div className="space-y-2">
                 <Label>Branş</Label>
-                <Select>
+                <Select value={selectedSport} onValueChange={setSelectedSport}>
                   <SelectTrigger>
                     <SelectValue placeholder="Branş seçin" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tüm Branşlar</SelectItem>
-                    <SelectItem value="basketball">Basketbol</SelectItem>
-                    <SelectItem value="swimming">Yüzme</SelectItem>
-                    <SelectItem value="football">Futbol</SelectItem>
-                    <SelectItem value="tennis">Tenis</SelectItem>
+                    {sportsOptions.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

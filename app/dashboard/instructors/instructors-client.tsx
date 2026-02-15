@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -42,6 +42,23 @@ import {
 import { Instructor, Group } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 interface InstructorsClientProps {
   initialInstructors: Instructor[];
@@ -67,6 +84,21 @@ export function InstructorsClient({
     useState<Instructor | null>(null);
   const [calendarTrainings, setCalendarTrainings] = useState<any[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
+  const [sportsOptions, setSportsOptions] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwordMode, setPasswordMode] = useState<"create" | "reset" | null>(
+    null
+  );
+  const [passwordValue, setPasswordValue] = useState("");
+  const [targetInstructor, setTargetInstructor] = useState<Instructor | null>(
+    null
+  );
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [unblockConfirmOpen, setUnblockConfirmOpen] = useState(false);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -80,6 +112,24 @@ export function InstructorsClient({
 
   const instructors = initialInstructors;
 
+  useEffect(() => {
+    const loadSports = async () => {
+      const { data } = await supabase
+        .from("sports")
+        .select("id,name")
+        .eq("tenant_id", tenantId)
+        .eq("is_active", true)
+        .order("sort_order")
+        .order("name");
+      const items = (data || []).map((s: any) => ({
+        id: String(s.id),
+        name: String(s.name),
+      }));
+      setSportsOptions(items);
+    };
+    loadSports();
+  }, [tenantId, supabase]);
+
   const searchLower = searchQuery.toLowerCase();
   const filteredInstructors = instructors.filter((instructor) => {
     const nameLower = (instructor.fullName || "").toLowerCase();
@@ -89,6 +139,112 @@ export function InstructorsClient({
 
   const getInstructorGroups = (instructorId: string) => {
     return groups.filter((g) => g.instructorId === instructorId);
+  };
+
+  const openPassword = (inst: Instructor, mode: "create" | "reset") => {
+    setTargetInstructor(inst);
+    setPasswordMode(mode);
+    setPasswordValue("");
+    setPasswordDialogOpen(true);
+  };
+
+  const submitPasswordChange = async () => {
+    if (!targetInstructor || !passwordMode) return;
+    if (!passwordValue || passwordValue.length < 8) {
+      toast.error("Şifre en az 8 karakter olmalı");
+      return;
+    }
+    setAuthSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/instructors/${encodeURIComponent(targetInstructor.id)}/auth`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action:
+              passwordMode === "create" ? "create_user" : "reset_password",
+            password: passwordValue,
+          }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.error || "İşlem başarısız");
+      }
+      toast.success(
+        passwordMode === "create"
+          ? "Eğitmen için giriş şifresi oluşturuldu"
+          : "Eğitmen şifresi güncellendi"
+      );
+      setPasswordDialogOpen(false);
+      setTargetInstructor(null);
+      setPasswordMode(null);
+      router.refresh();
+    } catch (e: any) {
+      toast.error(e?.message || "İşlem sırasında hata oluştu");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const confirmBlock = (inst: Instructor) => {
+    setTargetInstructor(inst);
+    setBlockConfirmOpen(true);
+  };
+  const confirmUnblock = (inst: Instructor) => {
+    setTargetInstructor(inst);
+    setUnblockConfirmOpen(true);
+  };
+
+  const doBlock = async () => {
+    if (!targetInstructor) return;
+    setAuthSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/instructors/${encodeURIComponent(targetInstructor.id)}/auth`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "block_user" }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "İşlem başarısız");
+      toast.success("Eğitmen erişimi engellendi");
+      setBlockConfirmOpen(false);
+      setTargetInstructor(null);
+      router.refresh();
+    } catch (e: any) {
+      toast.error(e?.message || "İşlem sırasında hata oluştu");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const doUnblock = async () => {
+    if (!targetInstructor) return;
+    setAuthSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/instructors/${encodeURIComponent(targetInstructor.id)}/auth`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "unblock_user" }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "İşlem başarısız");
+      toast.success("Eğitmen erişimi açıldı");
+      setUnblockConfirmOpen(false);
+      setTargetInstructor(null);
+      router.refresh();
+    } catch (e: any) {
+      toast.error(e?.message || "İşlem sırasında hata oluştu");
+    } finally {
+      setAuthSubmitting(false);
+    }
   };
 
   const handleFormChange = (field: string, value: string) => {
@@ -283,13 +439,12 @@ export function InstructorsClient({
                     <SelectValue placeholder="Branş seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="basketball">Basketbol</SelectItem>
-                    <SelectItem value="football">Futbol</SelectItem>
-                    <SelectItem value="volleyball">Voleybol</SelectItem>
-                    <SelectItem value="swimming">Yüzme</SelectItem>
-                    <SelectItem value="tennis">Tenis</SelectItem>
-                    <SelectItem value="fitness">Fitness</SelectItem>
-                    <SelectItem value="general">Genel</SelectItem>
+                    {sportsOptions.map((s) => (
+                      <SelectItem key={s.id} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="Genel">Genel</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -365,9 +520,28 @@ export function InstructorsClient({
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-semibold">{instructor.fullName}</p>
-                        <Badge variant="outline" className="mt-1">
-                          {instructor.specialization || "Genel"}
-                        </Badge>
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline">
+                            {instructor.specialization || "Genel"}
+                          </Badge>
+                          <Badge
+                            variant={
+                              instructor.status === "active"
+                                ? "default"
+                                : "outline"
+                            }
+                            className={
+                              instructor.status === "active"
+                                ? "bg-emerald-600 text-emerald-50 hover:bg-emerald-700"
+                                : ""
+                            }
+                          >
+                            {instructor.status === "active" ? "Aktif" : "Pasif"}
+                          </Badge>
+                          <Badge variant="outline">
+                            {instructor.userId ? "Hesap: Var" : "Hesap: Yok"}
+                          </Badge>
+                        </div>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -390,6 +564,34 @@ export function InstructorsClient({
                           >
                             Takvimi Gör
                           </DropdownMenuItem>
+                          {!instructor.userId && (
+                            <DropdownMenuItem
+                              onClick={() => openPassword(instructor, "create")}
+                            >
+                              Şifre Oluştur
+                            </DropdownMenuItem>
+                          )}
+                          {!!instructor.userId && (
+                            <DropdownMenuItem
+                              onClick={() => openPassword(instructor, "reset")}
+                            >
+                              Şifre Sıfırla
+                            </DropdownMenuItem>
+                          )}
+                          {instructor.status === "active" ? (
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => confirmBlock(instructor)}
+                            >
+                              Erişimi Engelle
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={() => confirmUnblock(instructor)}
+                            >
+                              Erişimi Aç
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => handleDelete(instructor)}
@@ -497,6 +699,82 @@ export function InstructorsClient({
           </div>
         </SheetContent>
       </Sheet>
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {passwordMode === "create"
+                ? "Eğitmen için şifre oluştur"
+                : "Eğitmen şifresini sıfırla"}
+            </DialogTitle>
+            <DialogDescription>
+              Şifre en az 8 karakter olmalı.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Yeni Şifre</Label>
+            <Input
+              type="password"
+              value={passwordValue}
+              onChange={(e) => setPasswordValue(e.target.value)}
+              placeholder="********"
+            />
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPasswordDialogOpen(false);
+                setTargetInstructor(null);
+                setPasswordMode(null);
+              }}
+            >
+              İptal
+            </Button>
+            <Button onClick={submitPasswordChange} disabled={authSubmitting}>
+              {authSubmitting ? "İşleniyor..." : "Kaydet"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={blockConfirmOpen} onOpenChange={setBlockConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Erişimi engelle</AlertDialogTitle>
+            <AlertDialogDescription>
+              Eğitmenin sisteme girişi engellenecek. Devam etmek istiyor
+              musunuz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction onClick={doBlock} disabled={authSubmitting}>
+              {authSubmitting ? "İşleniyor..." : "Engelle"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={unblockConfirmOpen}
+        onOpenChange={setUnblockConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Erişimi aç</AlertDialogTitle>
+            <AlertDialogDescription>
+              Eğitmenin sisteme girişi açılacak. Devam etmek istiyor musunuz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction onClick={doUnblock} disabled={authSubmitting}>
+              {authSubmitting ? "İşleniyor..." : "Aç"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
