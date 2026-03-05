@@ -77,7 +77,7 @@ export function TrainingsClient({
   const [venueId, setVenueId] = useState("");
   const [notes, setNotes] = useState("");
   const [trainingDate, setTrainingDate] = useState<string>(
-    toLocalISODate(selectedDate)
+    toLocalISODate(selectedDate),
   );
   const { currentBranch } = useAuthStore();
   const [selectedTrainingForAttendance, setSelectedTrainingForAttendance] =
@@ -86,7 +86,7 @@ export function TrainingsClient({
     useState<Training | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editTrainingDate, setEditTrainingDate] = useState<string>(
-    toLocalISODate(selectedDate)
+    toLocalISODate(selectedDate),
   );
   const [editStartTime, setEditStartTime] = useState("09:00");
   const [editEndTime, setEditEndTime] = useState("10:30");
@@ -208,7 +208,7 @@ export function TrainingsClient({
   // Filter trainings for selected date (compare YYYY-MM-DD to avoid TZ issues)
   const selectedDateStr = toLocalISODate(selectedDate);
   const filteredTrainings = trainings.filter(
-    (t) => t.trainingDate === selectedDateStr
+    (t) => t.trainingDate === selectedDateStr,
   );
 
   const openAttendance = async (training: Training) => {
@@ -324,7 +324,7 @@ export function TrainingsClient({
 
   const setAttendance = (
     studentId: string,
-    status: "present" | "absent" | "late" | "excused"
+    status: "present" | "absent" | "late" | "excused",
   ) => {
     setAttendanceData((prev) => ({
       ...prev,
@@ -581,8 +581,8 @@ export function TrainingsClient({
                   isSelected(day)
                     ? "bg-primary text-primary-foreground"
                     : isToday(day)
-                    ? "bg-primary/20 text-primary"
-                    : "hover:bg-secondary"
+                      ? "bg-primary/20 text-primary"
+                      : "hover:bg-secondary"
                 }`}
               >
                 <span className="text-xs">
@@ -650,7 +650,7 @@ export function TrainingsClient({
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       {(() => {
                         const b = branches.find(
-                          (br) => br.id === training.branchId
+                          (br) => br.id === training.branchId,
                         );
                         return b ? (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">

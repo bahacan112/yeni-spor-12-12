@@ -35,17 +35,25 @@ async function handle(req: Request) {
 
   if (action === "change_plan") {
     const planId = body?.planId as string;
-    if (!planId)
-      return NextResponse.json({ error: "Missing planId" }, { status: 400 });
+    const planSlug = typeof body?.planSlug === "string" ? body.planSlug : "";
+    const validUuid =
+      typeof planId === "string" &&
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+        planId,
+      );
+    if (!validUuid && !planSlug)
+      return NextResponse.json(
+        { error: "Geçersiz plan seçimi" },
+        { status: 400 },
+      );
     if (!subscription) {
       const now = new Date();
       const end = new Date(now);
       end.setMonth(end.getMonth() + 1);
-      const { data: planRow } = await supabase
-        .from("platform_plans")
-        .select("*")
-        .eq("id", planId)
-        .single();
+      const baseQuery = supabase.from("platform_plans").select("*");
+      const { data: planRow } = validUuid
+        ? await baseQuery.eq("id", planId).single()
+        : await baseQuery.eq("slug", planSlug).single();
       const amount = planRow?.monthly_price ?? null;
       const insertPayload: any = {
         tenant_id: tenantId,
@@ -102,7 +110,7 @@ async function handle(req: Request) {
     if (!paymentMethod)
       return NextResponse.json(
         { error: "Missing paymentMethod" },
-        { status: 400 }
+        { status: 400 },
       );
     if (!subscription)
       return NextResponse.json({ error: "No subscription" }, { status: 404 });
@@ -155,7 +163,7 @@ export async function PATCH(req: Request) {
   } catch (e: any) {
     return NextResponse.json(
       { error: e.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -166,7 +174,7 @@ export async function POST(req: Request) {
   } catch (e: any) {
     return NextResponse.json(
       { error: e.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

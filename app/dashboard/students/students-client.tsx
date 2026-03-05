@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -28,6 +28,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -43,7 +53,6 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import Link from "next/link";
 import { Student, Group, Branch } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -63,11 +72,20 @@ export function StudentsClient({
 }: StudentsClientProps) {
   const router = useRouter();
   const supabase = createClient();
+  const [students, setStudents] = useState<Student[]>(initialStudents);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [isNewStudentOpen, setIsNewStudentOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState<string>("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    setStudents(initialStudents);
+  }, [initialStudents]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -85,8 +103,6 @@ export function StudentsClient({
     notes: "",
   });
 
-  const students = initialStudents;
-
   const filteredStudents = students.filter((student) => {
     const name = (student.fullName || "").toLowerCase();
     const no = (student.studentNo || "").toLowerCase();
@@ -101,6 +117,44 @@ export function StudentsClient({
 
     return matchesSearch && matchesStatus && matchesGroup;
   });
+
+  const openDeleteDialog = (e: any, student: Student) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDeletingStudent(student);
+    setDeleteConfirmInput("");
+    setIsDeleteOpen(true);
+  };
+
+  const performDeleteStudent = async () => {
+    if (!deletingStudent) return;
+    if (deleteConfirmInput.trim() !== deletingStudent.fullName.trim()) {
+      toast.error("Onay için öğrencinin adını birebir yazın");
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      const r = await fetch(`/api/admin/students/${deletingStudent.id}/purge`, {
+        method: "POST",
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        toast.error(j?.error || "Öğrenci silinemedi");
+        return;
+      }
+      setStudents((prev) => prev.filter((s) => s.id !== deletingStudent.id));
+      toast.success("Öğrenci silindi");
+      setIsDeleteOpen(false);
+      setDeletingStudent(null);
+      setDeleteConfirmInput("");
+      router.refresh();
+    } catch (err) {
+      console.error("Student delete error:", err);
+      toast.error("Öğrenci silinemedi");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -177,7 +231,7 @@ export function StudentsClient({
         (studentCount || 0) >= allowedMax
       ) {
         toast.error(
-          "Öğrenci limiti aşıldı. Paket veya abonelik sürenizi güncelleyin."
+          "Öğrenci limiti aşıldı. Paket veya abonelik sürenizi güncelleyin.",
         );
         setIsSubmitting(false);
         return;
@@ -219,7 +273,7 @@ export function StudentsClient({
               joined_at: new Date().toISOString().split("T")[0],
               left_at: null,
             },
-            { onConflict: "student_id,group_id" }
+            { onConflict: "student_id,group_id" },
           );
 
         if (groupError) {
@@ -630,71 +684,107 @@ export function StudentsClient({
       {/* Student List */}
       <div className="space-y-2">
         {filteredStudents.map((student) => (
-          <Link key={student.id} href={`/dashboard/students/${student.id}`}>
-            <Card className="bg-card hover:bg-secondary/50 transition-colors cursor-pointer">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={student.photoUrl || "/placeholder.svg"} />
-                    <AvatarFallback
-                      name={student.fullName}
-                      className="bg-primary/20"
-                    />
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium truncate">{student.fullName}</p>
-                      {student.isLicensed && (
-                        <Badge className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30">
-                          Lisanslı
-                        </Badge>
-                      )}
-                      {getStatusBadge(student.status)}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {(() => {
-                        const b = branches.find(
-                          (br) => br.id === student.branchId
-                        );
-                        return b ? <span>{b.name}</span> : null;
-                      })()}
-                      {branches.find((br) => br.id === student.branchId) && (
-                        <span>•</span>
-                      )}
-                      {student.studentNo && <span>#{student.studentNo}</span>}
-                      {student.phone && (
-                        <>
-                          <span>•</span>
-                          <span>{student.phone}</span>
-                        </>
-                      )}
-                    </div>
+          <Card
+            key={student.id}
+            className="bg-card hover:bg-secondary/50 transition-colors cursor-pointer"
+            onClick={() => router.push(`/dashboard/students/${student.id}`)}
+          >
+            <CardContent className="p-3">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={student.photoUrl || "/placeholder.svg"} />
+                  <AvatarFallback
+                    name={student.fullName}
+                    className="bg-primary/20"
+                  />
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate">{student.fullName}</p>
+                    {student.isLicensed && (
+                      <Badge className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30">
+                        Lisanslı
+                      </Badge>
+                    )}
+                    {getStatusBadge(student.status)}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        asChild
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Düzenle</DropdownMenuItem>
-                        <DropdownMenuItem>Ödeme Al</DropdownMenuItem>
-                        <DropdownMenuItem>Grup Ata</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          Sil
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {(() => {
+                      const b = branches.find(
+                        (br) => br.id === student.branchId,
+                      );
+                      return b ? <span>{b.name}</span> : null;
+                    })()}
+                    {branches.find((br) => br.id === student.branchId) && (
+                      <span>•</span>
+                    )}
+                    {student.studentNo && <span>#{student.studentNo}</span>}
+                    {student.phone && (
+                      <>
+                        <span>•</span>
+                        <span>{student.phone}</span>
+                      </>
+                    )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </Link>
+                <div className="flex items-center gap-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          router.push(`/dashboard/students/${student.id}`);
+                        }}
+                      >
+                        Düzenle
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          router.push(`/dashboard/students/${student.id}`);
+                        }}
+                      >
+                        Ödeme Al
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          router.push(`/dashboard/students/${student.id}`);
+                        }}
+                      >
+                        Grup Ata
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onSelect={(e) => openDeleteDialog(e as any, student)}
+                      >
+                        Sil
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ))}
 
         {filteredStudents.length === 0 && (
@@ -706,6 +796,47 @@ export function StudentsClient({
           </Card>
         )}
       </div>
+
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Öğrenciyi Sil</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu işlem geri alınamaz. Silmeyi onaylamak için öğrencinin adını
+              birebir yazın.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Onay</Label>
+            <Input
+              value={deleteConfirmInput}
+              onChange={(e) => setDeleteConfirmInput(e.target.value)}
+              placeholder={deletingStudent?.fullName || ""}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setDeletingStudent(null);
+                setDeleteConfirmInput("");
+              }}
+            >
+              İptal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={performDeleteStudent}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={
+                isDeleting ||
+                !deletingStudent ||
+                deleteConfirmInput.trim() !== deletingStudent.fullName.trim()
+              }
+            >
+              {isDeleting ? "Siliniyor..." : "Sil"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

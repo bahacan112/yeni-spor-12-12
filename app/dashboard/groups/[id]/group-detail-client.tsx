@@ -80,23 +80,23 @@ export function GroupDetailClient({
   const [editGroupName, setEditGroupName] = useState(group.name);
   const [editSportType, setEditSportType] = useState(group.sportType || "");
   const [editBirthDateFrom, setEditBirthDateFrom] = useState(
-    group.birthDateFrom || ""
+    group.birthDateFrom || "",
   );
   const [editBirthDateTo, setEditBirthDateTo] = useState(
-    group.birthDateTo || ""
+    group.birthDateTo || "",
   );
   const [editLicenseRequirement, setEditLicenseRequirement] = useState<string>(
-    group.licenseRequirement || "any"
+    group.licenseRequirement || "any",
   );
   const [editCapacity, setEditCapacity] = useState(group.capacity.toString());
   const [editMonthlyFee, setEditMonthlyFee] = useState(
-    group.monthlyFee?.toString() || ""
+    group.monthlyFee?.toString() || "",
   );
   const [editInstructorId, setEditInstructorId] = useState(
-    group.instructorId || ""
+    group.instructorId || "",
   );
   const [editDescription, setEditDescription] = useState(
-    group.description || ""
+    group.description || "",
   );
   const [sportsOptions, setSportsOptions] = useState<
     Array<{ id: string; name: string }>
@@ -160,7 +160,7 @@ export function GroupDetailClient({
         if (searchQuery.trim()) {
           const searchTerm = `%${searchQuery}%`;
           query = query.or(
-            `full_name.ilike.${searchTerm},student_no.ilike.${searchTerm},phone.ilike.${searchTerm}`
+            `full_name.ilike.${searchTerm},student_no.ilike.${searchTerm},phone.ilike.${searchTerm}`,
           );
         } else {
           // If no search query, maybe order by created_at desc to show newest students
@@ -324,7 +324,7 @@ export function GroupDetailClient({
           (sports || []).map((s: any) => ({
             id: String(s.id),
             name: String(s.name),
-          }))
+          })),
         );
       } catch {}
     };
@@ -697,7 +697,7 @@ export function GroupDetailClient({
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {new Date(training.trainingDate).toLocaleDateString(
-                            "tr-TR"
+                            "tr-TR",
                           )}
                         </span>
                         <span className="flex items-center gap-1">
@@ -717,15 +717,15 @@ export function GroupDetailClient({
                         training.status === "completed"
                           ? "bg-green-500/20 text-green-500"
                           : training.status === "cancelled"
-                          ? "bg-red-500/20 text-red-500"
-                          : "bg-blue-500/20 text-blue-500"
+                            ? "bg-red-500/20 text-red-500"
+                            : "bg-blue-500/20 text-blue-500"
                       }
                     >
                       {training.status === "completed"
                         ? "Tamamlandı"
                         : training.status === "cancelled"
-                        ? "İptal"
-                        : "Planlandı"}
+                          ? "İptal"
+                          : "Planlandı"}
                     </Badge>
                   </div>
                 </CardContent>

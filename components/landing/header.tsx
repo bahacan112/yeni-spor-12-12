@@ -21,10 +21,7 @@ export function LandingHeader() {
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
-            <Dumbbell className="h-6 w-6 text-white" />
-          </div>
-          <span className="text-xl font-bold text-white">SporYonetim</span>
+          <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
         </Link>
 
         {/* Desktop Nav */}

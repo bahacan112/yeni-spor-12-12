@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Training } from "@/lib/types";
+import Link from "next/link";
 
 interface TodayTrainingsProps {
   trainings: Training[];
@@ -49,7 +50,8 @@ export function TodayTrainings({ trainings }: TodayTrainingsProps) {
       </CardHeader>
       <CardContent className="space-y-3">
         {trainings.map((training) => (
-          <Card key={training.id} className="border-border bg-secondary/30">
+          <Link href={`/dashboard/trainings?date=${training.trainingDate}`} key={training.id} className="block group">
+            <Card className="border-border bg-secondary/30 transition-colors group-hover:bg-secondary/60">
             <CardContent className="p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
@@ -78,10 +80,23 @@ export function TodayTrainings({ trainings }: TodayTrainingsProps) {
                         <MapPin className="h-3 w-3" />
                         {training.venue?.name}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {training.group?.studentCount || 0}
-                      </span>
+                      {training.attendanceStats && (
+                        <div className="flex items-center gap-2 text-xs flex-wrap">
+                          {training.attendanceStats.present > 0 && <span className="text-green-500 font-medium">{training.attendanceStats.present} Geldi</span>}
+                          {training.attendanceStats.absent > 0 && <span className="text-red-500 font-medium">{training.attendanceStats.absent} Gelmedi</span>}
+                          {training.attendanceStats.late > 0 && <span className="text-amber-500 font-medium">{training.attendanceStats.late} Geç Kalma</span>}
+                          {training.attendanceStats.excused > 0 && <span className="text-blue-500 font-medium">{training.attendanceStats.excused} İzinli</span>}
+                          {training.attendanceStats.unmarked !== undefined && training.attendanceStats.unmarked > 0 && <span className="text-muted-foreground">{training.attendanceStats.unmarked} İşlenmemiş</span>}
+                          
+                          {training.attendanceStats.present === 0 && 
+                           training.attendanceStats.absent === 0 && 
+                           training.attendanceStats.late === 0 && 
+                           training.attendanceStats.excused === 0 && 
+                           (!training.attendanceStats.unmarked) && (
+                            <span className="text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Yoklama alınmadı</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -89,6 +104,7 @@ export function TodayTrainings({ trainings }: TodayTrainingsProps) {
               </div>
             </CardContent>
           </Card>
+        </Link>
         ))}
       </CardContent>
     </Card>

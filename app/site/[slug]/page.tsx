@@ -96,13 +96,13 @@ export default async function TenantWebsite({
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <img
               src={tenant.logoUrl || "/placeholder.svg"}
               alt={tenant.name}
-              className="h-10 w-10 rounded-full object-cover"
+              className="h-10 w-10 shrink-0 rounded-full object-cover"
             />
-            <span className="font-bold text-lg hidden sm:block">
+            <span className="font-bold text-lg truncate hidden sm:block">
               {tenant.name}
             </span>
           </div>
@@ -138,9 +138,14 @@ export default async function TenantWebsite({
               {contactPage?.title || "İletişim"}
             </Link>
           </nav>
-          <Button asChild>
-            <Link href={`/site/${slug}/kayit`}>Kayıt Ol</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/site/${slug}/login`}>Öğrenci Girişi</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/site/${slug}/kayit`}>Kayıt Ol</Link>
+            </Button>
+          </div>
         </div>
       </header>
 

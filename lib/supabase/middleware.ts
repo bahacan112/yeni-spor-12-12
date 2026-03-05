@@ -18,7 +18,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           );
           response = NextResponse.next({
             request: {
@@ -26,16 +26,24 @@ export async function updateSession(request: NextRequest) {
             },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user) {
+    const mustChange = Boolean((user as any)?.user_metadata?.must_change_password);
+    const p = request.nextUrl.pathname;
+    if (mustChange && p !== "/dashboard/force-password") {
+      return NextResponse.redirect(new URL("/dashboard/force-password", request.url));
+    }
+  }
 
   // Protect dashboard and admin routes
   if (
@@ -114,7 +122,7 @@ export async function updateSession(request: NextRequest) {
         if (data.websiteEnabled) {
           const rewriteTo = new URL(
             `/site/${data.slug}${pathname === "/" ? "" : pathname}`,
-            request.url
+            request.url,
           );
           return NextResponse.rewrite(rewriteTo);
         }

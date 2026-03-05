@@ -11,6 +11,8 @@ import {
   User,
   Briefcase,
   Banknote,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,7 +79,7 @@ export function InstructorsClient({
   const [isNewInstructorOpen, setIsNewInstructorOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingInstructor, setEditingInstructor] = useState<Instructor | null>(
-    null
+    null,
   );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarInstructor, setCalendarInstructor] =
@@ -90,11 +92,14 @@ export function InstructorsClient({
 
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [passwordMode, setPasswordMode] = useState<"create" | "reset" | null>(
-    null
+    null,
   );
   const [passwordValue, setPasswordValue] = useState("");
+  const [passwordConfirmValue, setPasswordConfirmValue] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [targetInstructor, setTargetInstructor] = useState<Instructor | null>(
-    null
+    null,
   );
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [unblockConfirmOpen, setUnblockConfirmOpen] = useState(false);
@@ -145,6 +150,9 @@ export function InstructorsClient({
     setTargetInstructor(inst);
     setPasswordMode(mode);
     setPasswordValue("");
+    setPasswordConfirmValue("");
+    setShowPassword(false);
+    setShowPasswordConfirm(false);
     setPasswordDialogOpen(true);
   };
 
@@ -152,6 +160,10 @@ export function InstructorsClient({
     if (!targetInstructor || !passwordMode) return;
     if (!passwordValue || passwordValue.length < 8) {
       toast.error("Şifre en az 8 karakter olmalı");
+      return;
+    }
+    if (passwordValue !== passwordConfirmValue) {
+      toast.error("Şifreler eşleşmiyor");
       return;
     }
     setAuthSubmitting(true);
@@ -166,7 +178,7 @@ export function InstructorsClient({
               passwordMode === "create" ? "create_user" : "reset_password",
             password: passwordValue,
           }),
-        }
+        },
       );
       const json = await res.json();
       if (!res.ok) {
@@ -175,7 +187,7 @@ export function InstructorsClient({
       toast.success(
         passwordMode === "create"
           ? "Eğitmen için giriş şifresi oluşturuldu"
-          : "Eğitmen şifresi güncellendi"
+          : "Eğitmen şifresi güncellendi",
       );
       setPasswordDialogOpen(false);
       setTargetInstructor(null);
@@ -207,7 +219,7 @@ export function InstructorsClient({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "block_user" }),
-        }
+        },
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "İşlem başarısız");
@@ -232,7 +244,7 @@ export function InstructorsClient({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "unblock_user" }),
-        }
+        },
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "İşlem başarısız");
@@ -683,7 +695,7 @@ export function InstructorsClient({
                         <p className="font-semibold">{t.title}</p>
                         <p className="text-sm text-muted-foreground">
                           {new Date(t.training_date).toLocaleDateString(
-                            "tr-TR"
+                            "tr-TR",
                           )}{" "}
                           • {t.start_time} - {t.end_time}
                         </p>
@@ -711,14 +723,63 @@ export function InstructorsClient({
               Şifre en az 8 karakter olmalı.
             </DialogDescription>
           </DialogHeader>
+          {/* Email display */}
+          {targetInstructor?.email && (
+            <div className="rounded-lg bg-secondary/50 border border-border p-3 flex items-center gap-2">
+              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">Giriş E-postası</p>
+                <p className="text-sm font-medium">{targetInstructor.email}</p>
+              </div>
+            </div>
+          )}
+          {!targetInstructor?.email && (
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3">
+              <p className="text-xs text-amber-500">Bu eğitmene e-posta adresi atanmamış. Lütfen önce eğitmeni düzenleyerek e-posta ekleyin.</p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Yeni Şifre</Label>
-            <Input
-              type="password"
-              value={passwordValue}
-              onChange={(e) => setPasswordValue(e.target.value)}
-              placeholder="********"
-            />
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={passwordValue}
+                onChange={(e) => setPasswordValue(e.target.value)}
+                placeholder="En az 8 karakter"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword((v) => !v)}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Şifre Tekrar</Label>
+            <div className="relative">
+              <Input
+                type={showPasswordConfirm ? "text" : "password"}
+                value={passwordConfirmValue}
+                onChange={(e) => setPasswordConfirmValue(e.target.value)}
+                placeholder="Şifreyi tekrar girin"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPasswordConfirm((v) => !v)}
+                tabIndex={-1}
+              >
+                {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {passwordConfirmValue && passwordValue !== passwordConfirmValue && (
+              <p className="text-xs text-destructive">Şifreler eşleşmiyor</p>
+            )}
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button
@@ -731,7 +792,10 @@ export function InstructorsClient({
             >
               İptal
             </Button>
-            <Button onClick={submitPasswordChange} disabled={authSubmitting}>
+            <Button
+              onClick={submitPasswordChange}
+              disabled={authSubmitting || !targetInstructor?.email}
+            >
               {authSubmitting ? "İşleniyor..." : "Kaydet"}
             </Button>
           </div>

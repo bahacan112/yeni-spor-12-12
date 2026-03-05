@@ -59,7 +59,7 @@ export default function AccountingClient({
   const [filterType, setFilterType] = useState("all");
   const [isNewTransactionOpen, setIsNewTransactionOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<"income" | "expense">(
-    "income"
+    "income",
   );
   const supabase = createClient();
   const [amount, setAmount] = useState("");
@@ -89,11 +89,14 @@ export default function AccountingClient({
   });
 
   // Calculate expense categories for chart
-  const expenseCategoriesMap = expenses.reduce((acc, expense) => {
-    const cat = expense.category || "Diğer";
-    acc[cat] = (acc[cat] || 0) + expense.amount;
-    return acc;
-  }, {} as Record<string, number>);
+  const expenseCategoriesMap = expenses.reduce(
+    (acc, expense) => {
+      const cat = expense.category || "Diğer";
+      acc[cat] = (acc[cat] || 0) + expense.amount;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
   const totalExpenses = stats.totalExpense || 1; // Avoid division by zero
   const expenseCategories = Object.entries(expenseCategoriesMap)
@@ -176,7 +179,7 @@ export default function AccountingClient({
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ month }),
-                    }
+                    },
                   );
                   const json = await res.json();
                   if (!res.ok) throw new Error(json.error || "Hesaplanamadı");
@@ -475,11 +478,43 @@ export default function AccountingClient({
                     {transaction.description || "Açıklama yok"}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="capitalize">{transaction.category}</span>
+                    <span className="capitalize">
+                      {transaction.type === "income"
+                        ? transaction.category === "dues"
+                          ? "Aidat"
+                          : transaction.category === "registration"
+                            ? "Kayıt Ücreti"
+                            : transaction.category === "product"
+                              ? "Ürün Satışı"
+                              : "Diğer"
+                        : transaction.category || "Diğer"}
+                    </span>
                     <span>•</span>
                     <span>
                       {new Date(transaction.date).toLocaleDateString("tr-TR")}
                     </span>
+                    {transaction.type === "income" &&
+                      transaction.student?.fullName && (
+                        <>
+                          <span>•</span>
+                          <span>{transaction.student.fullName}</span>
+                        </>
+                      )}
+                    {transaction.type === "income" &&
+                      transaction.paymentMethod && (
+                        <>
+                          <span>•</span>
+                          <span>
+                            {transaction.paymentMethod === "cash"
+                              ? "Nakit"
+                              : transaction.paymentMethod === "credit_card"
+                                ? "Kart"
+                                : transaction.paymentMethod === "bank_transfer"
+                                  ? "Havale"
+                                  : transaction.paymentMethod}
+                          </span>
+                        </>
+                      )}
                   </div>
                 </div>
                 <div

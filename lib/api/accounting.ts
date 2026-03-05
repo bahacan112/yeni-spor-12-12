@@ -28,7 +28,7 @@ export async function getAccountingData(branchId?: string) {
   // Fetch Payments (Income)
   let paymentsQuery = supabase
     .from("payments")
-    .select("*")
+    .select("*, student:students(*), monthly_due:monthly_dues(due_month)")
     .eq("tenant_id", tenantId)
     .order("payment_date", { ascending: false });
   if (branchId) {
@@ -80,7 +80,7 @@ export async function getAccountingData(branchId?: string) {
   const pendingAmount =
     pendingDues?.reduce(
       (sum, d: any) => sum + ((d.amount || 0) - (d.paid_amount || 0)),
-      0
+      0,
     ) || 0;
 
   const formattedPayments: Payment[] = (payments || []).map((p: any) => ({
@@ -90,7 +90,7 @@ export async function getAccountingData(branchId?: string) {
     studentId: p.student_id,
     monthlyDueId: p.monthly_due_id,
     orderId: p.order_id,
-    amount: p.amount,
+    amount: Number(p.amount || 0),
     paymentType: p.payment_type,
     paymentMethod: p.payment_method,
     referenceNo: p.reference_no,
@@ -98,6 +98,37 @@ export async function getAccountingData(branchId?: string) {
     receivedBy: p.received_by,
     paymentDate: p.payment_date,
     createdAt: p.created_at,
+    student: p.student
+      ? {
+          id: p.student.id,
+          tenantId: p.student.tenant_id,
+          branchId: p.student.branch_id,
+          userId: p.student.user_id,
+          studentNo: p.student.student_no,
+          fullName: p.student.full_name || "",
+          birthDate: p.student.birth_date,
+          isLicensed: p.student.is_licensed,
+          licenseNo: p.student.license_no,
+          licenseIssuedAt: p.student.license_issued_at,
+          licenseExpiresAt: p.student.license_expires_at,
+          licenseFederation: p.student.license_federation,
+          gender: p.student.gender,
+          phone: p.student.phone,
+          email: p.student.email,
+          address: p.student.address,
+          emergencyContactName: p.student.emergency_contact_name,
+          emergencyContactPhone: p.student.emergency_contact_phone,
+          guardianName: p.student.guardian_name,
+          guardianPhone: p.student.guardian_phone,
+          guardianEmail: p.student.guardian_email,
+          photoUrl: p.student.photo_url,
+          registrationDate: p.student.registration_date,
+          status: p.student.status,
+          notes: p.student.notes,
+          createdAt: p.student.created_at,
+          updatedAt: p.student.updated_at,
+        }
+      : undefined,
   }));
 
   const formattedExpenses: Expense[] = (expenses || []).map((e: any) => ({

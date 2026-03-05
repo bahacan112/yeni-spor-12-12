@@ -16,5 +16,5 @@ export default async function StudentDetailPage({ params }: PageProps) {
     notFound()
   }
 
-  return <StudentDetailClient student={data.student} groups={data.groups} monthlyDues={data.monthlyDues} />
+  return <StudentDetailClient student={data.student} groups={data.groups} allBranchGroups={data.allBranchGroups} monthlyDues={data.monthlyDues} />
 }

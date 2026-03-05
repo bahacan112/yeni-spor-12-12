@@ -462,7 +462,7 @@ export default function RegistrationLinksClient({
               className="w-full"
               onClick={() => {
                 const svg = document.getElementById(
-                  "qr-svg"
+                  "qr-svg",
                 ) as SVGSVGElement | null;
                 if (!svg) return;
                 const serializer = new XMLSerializer();

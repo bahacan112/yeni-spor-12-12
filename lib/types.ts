@@ -158,6 +158,32 @@ export interface Training {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  attendanceStats?: {
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    unmarked?: number;
+  };
+}
+
+export interface VenueReservation {
+  id: string;
+  tenantId: string;
+  venueId: string;
+  venue?: Venue;
+  reservationDate: string;
+  startTime: string;
+  endTime: string;
+  customerName: string;
+  customerPhone?: string;
+  totalAmount: number;
+  status: "confirmed" | "cancelled" | "pending";
+  paymentId?: string;
+  notes?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Attendance {
@@ -484,6 +510,8 @@ export interface TenantSubscription {
   autoRenew: boolean;
   isTrial?: boolean;
   trialDays?: number | null;
+  pendingDowngradePlanId?: string | null;
+  pendingDowngradeEffectiveAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

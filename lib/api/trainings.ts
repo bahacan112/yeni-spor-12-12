@@ -35,7 +35,7 @@ export async function getTrainingsData(branchId?: string) {
       instructor:instructors(*),
       group:groups(*),
       venue:venues(*)
-    `
+    `,
     )
     .eq("tenant_id", tenantId)
     .order("training_date", { ascending: true })
@@ -53,10 +53,8 @@ export async function getTrainingsData(branchId?: string) {
   // Compute student counts per group for trainings
   const groupIds = Array.from(
     new Set(
-      (trainings || [])
-        .map((t: any) => t.group_id)
-        .filter((id: any) => !!id)
-    )
+      (trainings || []).map((t: any) => t.group_id).filter((id: any) => !!id),
+    ),
   );
   let groupCounts: Record<string, number> = {};
   if (groupIds.length > 0) {
@@ -65,11 +63,14 @@ export async function getTrainingsData(branchId?: string) {
       .select("group_id")
       .in("group_id", groupIds as any)
       .eq("status", "active");
-    groupCounts = (sgRows || []).reduce((acc: Record<string, number>, row: any) => {
-      const gid = String(row.group_id);
-      acc[gid] = (acc[gid] || 0) + 1;
-      return acc;
-    }, {});
+    groupCounts = (sgRows || []).reduce(
+      (acc: Record<string, number>, row: any) => {
+        const gid = String(row.group_id);
+        acc[gid] = (acc[gid] || 0) + 1;
+        return acc;
+      },
+      {},
+    );
   }
 
   const formattedTrainings = (trainings || []).map((t: any) => ({

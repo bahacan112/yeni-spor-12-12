@@ -1,40 +1,33 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseService } from "@/lib/supabase/service";
 
 export async function GET(
-  _req: Request,
-  context: { params: Promise<{ slug: string }> }
+  req: NextRequest,
+  ctx: { params: Promise<{ slug: string }> },
 ) {
-  const { slug } = await context.params;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createClient(url, key);
-
-  const { data: tenant, error: tErr } = await supabase
+  const p = await ctx.params;
+  const slug = String(p?.slug || "");
+  if (!slug) {
+    return NextResponse.json({ sports: [] });
+  }
+  const svc = getSupabaseService();
+  const { data: t } = await svc
     .from("tenants")
     .select("id")
-    .eq("slug", slug.toLowerCase())
-    .single();
-  if (tErr || !tenant) {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-  }
-  const { data: sports, error: sErr } = await supabase
+    .eq("slug", slug)
+    .maybeSingle();
+  const tenantId = String(t?.id || "");
+  if (!tenantId) return NextResponse.json({ sports: [] });
+  const { data: ss } = await svc
     .from("sports")
-    .select("id,name,slug,is_active,sort_order")
-    .eq("tenant_id", tenant.id)
-    .eq("is_active", true)
-    .order("sort_order")
+    .select("id,name,is_active")
+    .eq("tenant_id", tenantId)
     .order("name");
-  if (sErr) {
-    return NextResponse.json({ error: sErr.message }, { status: 400 });
-  }
   return NextResponse.json({
-    sports: (sports || []).map((s: any) => ({
+    sports: (ss || []).map((s: any) => ({
       id: String(s.id),
       name: String(s.name),
-      slug: s.slug ? String(s.slug) : undefined,
+      isActive: s.is_active !== false,
     })),
   });
 }

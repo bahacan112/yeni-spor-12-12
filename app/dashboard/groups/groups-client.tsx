@@ -459,7 +459,7 @@ export function GroupsClient({
 
                   const isLimited = Boolean(tenantRow?.is_limited);
                   const subStatus = String(
-                    tenantRow?.subscription_status || "active"
+                    tenantRow?.subscription_status || "active",
                   );
                   const configuredMax = Number(tenantRow?.max_groups ?? 0) || 0;
                   const planMax =
@@ -479,7 +479,7 @@ export function GroupsClient({
                     (groupCount || 0) >= allowedMax
                   ) {
                     toast.error(
-                      "Grup limiti aşıldı. Paket veya abonelik sürenizi güncelleyin."
+                      "Grup limiti aşıldı. Paket veya abonelik sürenizi güncelleyin.",
                     );
                     return;
                   }
@@ -580,12 +580,12 @@ export function GroupsClient({
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             {(() => {
                               const b = branches.find(
-                                (br) => br.id === group.branchId
+                                (br) => br.id === group.branchId,
                               );
                               return b ? <span>{b.name}</span> : null;
                             })()}
                             {branches.find(
-                              (br) => br.id === group.branchId
+                              (br) => br.id === group.branchId,
                             ) && <span>•</span>}
                             <span>{group.sportType}</span>
                             <span>•</span>
@@ -601,8 +601,8 @@ export function GroupsClient({
                               {group.licenseRequirement === "licensed"
                                 ? "Lisanslı"
                                 : group.licenseRequirement === "unlicensed"
-                                ? "Lisanssız"
-                                : "Herhangi"}
+                                  ? "Lisanssız"
+                                  : "Herhangi"}
                             </span>
                           </div>
                         </div>

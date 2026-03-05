@@ -9,6 +9,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import type { Student, MonthlyDue } from "@/lib/types"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface PaymentSheetProps {
   open: boolean
@@ -18,10 +20,18 @@ interface PaymentSheetProps {
 }
 
 export function PaymentSheet({ open, onOpenChange, student, due }: PaymentSheetProps) {
-  const [amount, setAmount] = useState(due ? String(due.amount - due.paidAmount) : "")
+  const remainingAmount = due
+    ? (due.computedAmount ?? due.amount ?? 0) - (due.paidAmount ?? 0)
+    : 0
+
+  const [amountType, setAmountType] = useState<"full" | "custom">(due ? "full" : "custom")
+  const [amount, setAmount] = useState(
+    due ? String(remainingAmount) : ""
+  )
   const [paymentMethod, setPaymentMethod] = useState("cash")
   const [description, setDescription] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const supabase = createClient()
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("tr-TR", {
@@ -32,18 +42,68 @@ export function PaymentSheet({ open, onOpenChange, student, due }: PaymentSheetP
   }
 
   const handleSubmit = async () => {
-    setIsSubmitting(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSubmitting(false)
-    onOpenChange(false)
-    // Reset form
-    setAmount("")
-    setPaymentMethod("cash")
-    setDescription("")
-  }
+    // Determine the final amount based on selection
+    const amt = amountType === "full" && due ? remainingAmount : Number(amount || 0)
 
-  const remainingAmount = due ? due.amount - due.paidAmount : 0
+    if (!amt || amt <= 0) {
+      toast.error("Tutar geçersiz")
+      return
+    }
+    if (!student?.tenantId) {
+      toast.error("Tenant bulunamadı")
+      return
+    }
+    const branchId = student.branchId || null
+    if (!branchId) {
+      toast.error("Şube zorunlu")
+      return
+    }
+    setIsSubmitting(true)
+    try {
+      const paymentType = due ? "dues" : "other"
+      const { error: pErr } = await supabase.from("payments").insert({
+        tenant_id: student.tenantId,
+        branch_id: branchId,
+        student_id: student.id,
+        monthly_due_id: due?.id || null,
+        amount: amt,
+        payment_type: paymentType,
+        payment_method: paymentMethod,
+        description: description || null,
+        payment_date: new Date().toISOString().split("T")[0],
+      })
+      if (pErr) {
+        throw pErr
+      }
+      if (due) {
+        const newPaid = (due.paidAmount ?? 0) + amt
+        const total = (due.computedAmount ?? due.amount ?? 0)
+        const newStatus = newPaid >= total ? "paid" : "partial"
+        const { error: dErr } = await supabase
+          .from("monthly_dues")
+          .update({
+            paid_amount: newPaid,
+            status: newStatus,
+            paid_at: newStatus === "paid" ? new Date().toISOString() : null,
+          })
+          .eq("id", due.id)
+        if (dErr && dErr.code !== "42P01") {
+          throw dErr
+        }
+      }
+      toast.success("Ödeme kaydedildi")
+      onOpenChange(false)
+      setAmount("")
+      setPaymentMethod("cash")
+      setDescription("")
+      location.reload()
+    } catch (e) {
+      console.error(e)
+      toast.error("Ödeme kaydedilemedi")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -69,36 +129,60 @@ export function PaymentSheet({ open, onOpenChange, student, due }: PaymentSheetP
             )}
           </div>
 
-          {/* Amount */}
-          <div className="space-y-2">
-            <Label>Tutar (TL)</Label>
-            <Input
-              type="number"
-              placeholder="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="text-lg"
-            />
-            {due && (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs bg-transparent"
-                  onClick={() => setAmount(String(remainingAmount))}
-                >
-                  Tamamı ({formatCurrency(remainingAmount)})
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs bg-transparent"
-                  onClick={() => setAmount(String(remainingAmount / 2))}
-                >
-                  Yarısı ({formatCurrency(remainingAmount / 2)})
-                </Button>
+          {/* Amount Selection */}
+          <div className="space-y-4">
+            <Label className="text-base">Ödenecek Tutar</Label>
+            
+            {due ? (
+              <RadioGroup 
+                value={amountType} 
+                onValueChange={(val) => {
+                  setAmountType(val as "full" | "custom")
+                  if (val === "full") {
+                    setAmount(String(remainingAmount))
+                  } else {
+                    setAmount("")
+                  }
+                }} 
+                className="grid gap-3"
+              >
+                <div>
+                  <RadioGroupItem value="full" id="amount-full" className="peer sr-only" />
+                  <Label
+                    htmlFor="amount-full"
+                    className="flex flex-col items-start justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer gap-1"
+                  >
+                    <span className="font-semibold text-sm">Aylık Aidatın Tamamı</span>
+                    <span className="text-xl font-bold text-primary">{formatCurrency(remainingAmount)}</span>
+                  </Label>
+                </div>
+                <div>
+                  <RadioGroupItem value="custom" id="amount-custom" className="peer sr-only" />
+                  <Label
+                    htmlFor="amount-custom"
+                    className="flex flex-col items-start justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer gap-1"
+                  >
+                    <span className="font-semibold text-sm">Özel Tutar Belirle</span>
+                    <span className="text-xs text-muted-foreground">Kısmi ödeme veya avans vb. durumlar için</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            ) : (
+              // If there's no specific due attached, always ask for custom amount
+              <div />
+            )}
+
+            {(amountType === "custom" || !due) && (
+              <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <Label>Tutar (TL)</Label>
+                <Input
+                  type="number"
+                  placeholder="Örn: 500"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="text-lg h-12"
+                  autoFocus
+                />
               </div>
             )}
           </div>
@@ -153,8 +237,8 @@ export function PaymentSheet({ open, onOpenChange, student, due }: PaymentSheetP
         </div>
 
         <SheetFooter className="mt-6">
-          <Button className="w-full" size="lg" onClick={handleSubmit} disabled={!amount || isSubmitting}>
-            {isSubmitting ? "İşleniyor..." : `${formatCurrency(Number(amount) || 0)} Ödeme Al`}
+          <Button className="w-full" size="lg" onClick={handleSubmit} disabled={(amountType === 'custom' && !amount) || isSubmitting}>
+            {isSubmitting ? "İşleniyor..." : `${formatCurrency(amountType === 'full' && due ? remainingAmount : (Number(amount) || 0))} Ödeme Al`}
           </Button>
         </SheetFooter>
       </SheetContent>

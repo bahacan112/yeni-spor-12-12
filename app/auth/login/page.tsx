@@ -27,6 +27,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { tenantScopedAuthEmailBrowser } from "@/lib/auth/tenant-auth-email-browser";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,25 +49,64 @@ export default function LoginPage() {
         {
           email,
           password,
-        }
+        },
       );
 
+      let authData = data;
       if (authError) {
-        throw authError;
+        const msg = String(authError.message || "").toLowerCase();
+        const isBadCred =
+          msg.includes("invalid login credentials") || msg.includes("invalid");
+        if (!isBadCred) throw authError;
+
+        const { data: candidates } = await supabase
+          .from("users")
+          .select("tenant_id")
+          .ilike("email", email)
+          .limit(5);
+        const tenantIdSet = new Set<string>();
+        (candidates || []).forEach((c: any) => {
+          const tid = String(c?.tenant_id || "");
+          if (tid) tenantIdSet.add(tid);
+        });
+        const tenantIds = Array.from(tenantIdSet);
+        if (tenantIds.length !== 1) {
+          throw new Error(
+            "Bu e-posta birden fazla okulda kayıtlı. Okul seçimi gerekli.",
+          );
+        }
+        const authEmail = await tenantScopedAuthEmailBrowser(
+          String(tenantIds[0] || ""),
+          email,
+        );
+        const { data: d2, error: e2 } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password,
+        });
+        if (e2) throw e2;
+        authData = d2;
       }
 
       // Check user role for redirection
       let userRole = null;
-      if (data.user) {
+      if (authData.user) {
         const { data: userData } = await supabase
           .from("users")
           .select("role")
-          .eq("id", data.user.id)
+          .eq("id", authData.user.id)
           .single();
         userRole = userData?.role;
       }
 
       router.refresh();
+
+      const mustChange = Boolean(
+        (authData.user as any)?.user_metadata?.must_change_password,
+      );
+      if (mustChange) {
+        router.push("/dashboard/force-password");
+        return;
+      }
 
       if (userRole === "super_admin") {
         router.push("/admin");
@@ -87,6 +127,9 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-md bg-slate-900 border-slate-800">
       <CardHeader className="text-center">
+        <div className="flex justify-center mb-4">
+          <img src="/logo.png" alt="Logo" className="h-16 w-auto" />
+        </div>
         <CardTitle className="text-2xl text-white">Giriş Yap</CardTitle>
         <CardDescription className="text-slate-400">
           Hesabınıza giriş yapın

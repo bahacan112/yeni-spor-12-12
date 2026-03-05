@@ -149,6 +149,9 @@ export default function RegisterPage() {
   return (
     <Card className="w-full max-w-md bg-slate-900 border-slate-800">
       <CardHeader className="text-center">
+        <div className="flex justify-center mb-4">
+          <img src="/logo.png" alt="Logo" className="h-16 w-auto" />
+        </div>
         <CardTitle className="text-2xl text-white">Kayıt Ol</CardTitle>
         <CardDescription className="text-slate-400">
           {step === 1

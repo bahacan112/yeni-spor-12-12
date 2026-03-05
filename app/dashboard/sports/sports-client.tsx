@@ -155,7 +155,9 @@ export function SportsClient({
       return;
     }
     setSports((prev) =>
-      prev.map((s) => (s.id === sport.id ? { ...s, isActive: !s.isActive } : s))
+      prev.map((s) =>
+        s.id === sport.id ? { ...s, isActive: !s.isActive } : s,
+      ),
     );
   };
 
@@ -174,7 +176,7 @@ export function SportsClient({
       return;
     }
     setSports((prev) =>
-      prev.map((s) => (s.id === editingId ? { ...s, name: editingName } : s))
+      prev.map((s) => (s.id === editingId ? { ...s, name: editingName } : s)),
     );
     setEditingId(null);
     setEditingName("");
@@ -404,7 +406,8 @@ export function SportsClient({
                 <SelectContent>
                   {sports
                     .filter(
-                      (s) => s.isActive && s.id !== reassignDialog.sourceSportId
+                      (s) =>
+                        s.isActive && s.id !== reassignDialog.sourceSportId,
                     )
                     .map((s) => (
                       <SelectItem key={s.id} value={s.id}>

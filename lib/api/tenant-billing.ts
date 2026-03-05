@@ -1,5 +1,6 @@
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { TenantSubscription, TenantPayment, PlatformPlan } from "@/lib/types";
+import { getSupabaseService } from "@/lib/supabase/service";
 
 export async function getTenantBillingData() {
   const supabase = await getSupabaseServer();
@@ -16,13 +17,23 @@ export async function getTenantBillingData() {
   if (!userData?.tenant_id) throw new Error("Tenant not found");
   const tenantId = userData.tenant_id;
 
-  const { data: subRaw } = await supabase
+  let { data: subRaw } = await supabase
     .from("tenant_subscriptions")
     .select("*, plan:platform_plans(*)")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(1);
-  const subRow = subRaw?.[0] || null;
+  let subRow = subRaw?.[0] || null;
+  if (!subRow) {
+    const svc = getSupabaseService();
+    const { data: subSvc } = await svc
+      .from("tenant_subscriptions")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    subRow = subSvc?.[0] || null;
+  }
 
   let planRow: any | null = subRow?.plan ?? null;
   if (!planRow && subRow?.plan_id) {
@@ -32,6 +43,15 @@ export async function getTenantBillingData() {
       .eq("id", subRow.plan_id)
       .single();
     planRow = pr || null;
+    if (!planRow) {
+      const svc = getSupabaseService();
+      const { data: prSvc } = await svc
+        .from("platform_plans")
+        .select("*")
+        .eq("id", subRow.plan_id)
+        .single();
+      planRow = prSvc || null;
+    }
   }
 
   const mappedPlan: PlatformPlan | undefined = planRow
@@ -75,6 +95,10 @@ export async function getTenantBillingData() {
           (subRow as any).is_trial ??
           ((subRow as any).payment_method === "trial" ? true : undefined),
         trialDays: (subRow as any).trial_days ?? null,
+        pendingDowngradePlanId:
+          (subRow as any).pending_downgrade_plan_id ?? null,
+        pendingDowngradeEffectiveAt:
+          (subRow as any).pending_downgrade_effective_at ?? null,
         createdAt: subRow.created_at,
         updatedAt: subRow.updated_at,
       }

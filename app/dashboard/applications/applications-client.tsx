@@ -73,11 +73,325 @@ export default function ApplicationsClient({
   });
   const [approveGroupId, setApproveGroupId] = useState<string>("");
   const [approveGroups, setApproveGroups] = useState<
-    Array<{ id: string; name: string }>
+    Array<{ id: string; name: string; monthlyFee?: number | null }>
   >([]);
   const [loadingGroups, setLoadingGroups] = useState<boolean>(false);
+  const [tenantName, setTenantName] = useState<string>("");
+  const [branchName, setBranchName] = useState<string>("");
+  const [tenantSlug, setTenantSlug] = useState<string>("");
+  const [selectedGroupFee, setSelectedGroupFee] = useState<number | null>(null);
+  const [overrideAmount, setOverrideAmount] = useState<string>("");
+  const [discountPercent, setDiscountPercent] = useState<string>("");
+  const [editMode, setEditMode] = useState<boolean>(false);
+  const [editLoading, setEditLoading] = useState<boolean>(false);
+  const [editForm, setEditForm] = useState<{
+    fullName: string;
+    tenantId?: string;
+    branchId?: string;
+    sportId?: string;
+    birthDate?: string;
+    gender?: string;
+    phone?: string;
+    email?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+    address?: string;
+  }>({
+    fullName: "",
+    tenantId: "",
+    branchId: "",
+    sportId: "",
+    birthDate: "",
+    gender: "",
+    phone: "",
+    email: "",
+    guardianName: "",
+    guardianPhone: "",
+    address: "",
+  });
+  const [userRole, setUserRole] = useState<string>("");
+  const [editTenants, setEditTenants] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [editBranches, setEditBranches] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [editSports, setEditSports] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [branchSportsLoading, setBranchSportsLoading] =
+    useState<boolean>(false);
+  const [auditEvents, setAuditEvents] = useState<any[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState<boolean>(false);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    const loadTenantBranch = async () => {
+      const appLite = selectedApp;
+      if (!appLite) return;
+      try {
+        const { data: t0 } = await supabase
+          .from("tenants")
+          .select("name,slug")
+          .eq("id", appLite.tenantId)
+          .maybeSingle();
+        setTenantName(String(t0?.name || ""));
+        setTenantSlug(String(t0?.slug || ""));
+      } catch {
+        setTenantName("");
+        setTenantSlug("");
+      }
+      // Public fallback: fetch branches/sports by slug regardless of auth
+      if (tenantSlug) {
+        try {
+          const resB = await fetch(
+            `/api/public/tenants/${tenantSlug}/branches`,
+          );
+          const jsonB = await resB.json();
+          const bOpts = (jsonB?.branches || []).map((b: any) => ({
+            id: String(b.id),
+            name: String(b.name),
+          }));
+          if (bOpts.length) {
+            setEditBranches(bOpts);
+          }
+        } catch {}
+        try {
+          const resS = await fetch(`/api/public/tenants/${tenantSlug}/sports`);
+          const jsonS = await resS.json();
+          const sOpts = (jsonS?.sports || []).map((s: any) => ({
+            id: String(s.id),
+            name: String(s.name),
+          }));
+          if (sOpts.length) {
+            setEditSports(sOpts);
+          }
+        } catch {}
+      }
+      setEditForm({
+        fullName: appLite.fullName,
+        tenantId: appLite.tenantId,
+        branchId: appLite.branchId || "",
+        sportId: appLite.sportId || "",
+        birthDate: appLite.birthDate || "",
+        gender: appLite.gender || "",
+        phone: appLite.phone || "",
+        email: appLite.email || "",
+        guardianName: appLite.guardianName || "",
+        guardianPhone: appLite.guardianPhone || "",
+        address: appLite.address || "",
+      });
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes?.data?.user?.id || "";
+      if (uid) {
+        const { data: u } = await supabase
+          .from("users")
+          .select("role,tenant_id")
+          .eq("id", uid)
+          .maybeSingle();
+        setUserRole(String(u?.role || ""));
+        const currentTenantId = String(appLite.tenantId);
+        if (u?.role === "super_admin") {
+          const { data: ts } = await supabase
+            .from("tenants")
+            .select("id,name")
+            .order("name");
+          setEditTenants(
+            (ts || []).map((t: any) => ({
+              id: String(t.id),
+              name: String(t.name),
+            })),
+          );
+        } else {
+          const { data: t } = await supabase
+            .from("tenants")
+            .select("id,name")
+            .eq("id", currentTenantId)
+            .maybeSingle();
+          setEditTenants(t ? [{ id: String(t.id), name: String(t.name) }] : []);
+        }
+        try {
+          const r = await fetch(
+            `/api/admin/tenants/${currentTenantId}/options`,
+          );
+          const j = await r.json();
+          const b0 = (j?.branches || []).map((b: any) => ({
+            id: String(b.id),
+            name: String(b.name),
+          }));
+          const s0 = (j?.sports || []).map((s: any) => ({
+            id: String(s.id),
+            name: String(s.name),
+          }));
+          if (b0.length) setEditBranches(b0);
+          if (s0.length) setEditSports(s0);
+        } catch {}
+        const { data: bs } = await supabase
+          .from("branches")
+          .select("id,name")
+          .eq("tenant_id", currentTenantId)
+          .order("name");
+        let branchOpts = (bs || []).map((b: any) => ({
+          id: String(b.id),
+          name: String(b.name),
+        }));
+        if (!branchOpts.length && tenantSlug) {
+          try {
+            const res = await fetch(
+              `/api/public/tenants/${tenantSlug}/branches`,
+            );
+            const json = await res.json();
+            branchOpts = (json?.branches || []).map((b: any) => ({
+              id: String(b.id),
+              name: String(b.name || b.title || "Şube"),
+            }));
+          } catch {}
+        }
+        if (branchOpts.length) {
+          setEditBranches(branchOpts);
+        } else if ((appLite.branchId || "").length > 0) {
+          setEditBranches([
+            { id: String(appLite.branchId), name: branchName || "Şube" },
+          ]);
+        }
+        const { data: ss } = await supabase
+          .from("sports")
+          .select("id,name")
+          .eq("tenant_id", currentTenantId)
+          .order("name");
+        let sportOpts = (ss || []).map((s: any) => ({
+          id: String(s.id),
+          name: String(s.name),
+        }));
+        if (!sportOpts.length && tenantSlug) {
+          try {
+            const res2 = await fetch(
+              `/api/public/tenants/${tenantSlug}/sports`,
+            );
+            const json2 = await res2.json();
+            sportOpts = (json2?.sports || []).map((s: any) => ({
+              id: String(s.id),
+              name: String(s.name),
+            }));
+          } catch {}
+        }
+        if (sportOpts.length) {
+          setEditSports(sportOpts);
+        }
+      }
+      try {
+        const r2 = await fetch(
+          `/api/admin/tenants/${appLite.tenantId}/options`,
+        );
+        const j2 = await r2.json();
+        const b1 = (j2?.branches || []).map((b: any) => ({
+          id: String(b.id),
+          name: String(b.name),
+        }));
+        const s1 = (j2?.sports || []).map((s: any) => ({
+          id: String(s.id),
+          name: String(s.name),
+        }));
+        if (b1.length) setEditBranches(b1);
+        if (s1.length) setEditSports(s1);
+      } catch {}
+      try {
+        const { data: t } = await supabase
+          .from("tenants")
+          .select("name,slug")
+          .eq("id", appLite.tenantId)
+          .maybeSingle();
+        setTenantName(String(t?.name || ""));
+        setTenantSlug(String(t?.slug || ""));
+      } catch {
+        setTenantName("");
+        setTenantSlug("");
+      }
+      try {
+        if (appLite.branchId) {
+          const { data: b } = await supabase
+            .from("branches")
+            .select("name")
+            .eq("id", appLite.branchId)
+            .maybeSingle();
+          setBranchName(String(b?.name || ""));
+        } else {
+          setBranchName("");
+        }
+      } catch {
+        setBranchName("");
+      }
+    };
+    loadTenantBranch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedApp]);
+
+  useEffect(() => {
+    const loadAudit = async () => {
+      if (!selectedApp) return;
+      setLoadingAudit(true);
+      try {
+        const { data } = await supabase
+          .from("audit_logs")
+          .select("id,action,created_at,new_values,user_id")
+          .eq("entity_type", "applications")
+          .eq("entity_id", selectedApp.id)
+          .order("created_at", { ascending: false })
+          .limit(20);
+        setAuditEvents(data || []);
+      } finally {
+        setLoadingAudit(false);
+      }
+    };
+    loadAudit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedApp?.id]);
+
+  useEffect(() => {
+    const loadBranchSports = async () => {
+      if (!editMode) return;
+      const appLite = selectedApp;
+      const bid = editForm.branchId || appLite?.branchId || "";
+      if (!bid) return;
+      setBranchSportsLoading(true);
+      try {
+        const { data: gs } = await supabase
+          .from("groups")
+          .select("sport_id")
+          .eq("branch_id", bid);
+        const rawIds = (gs || [])
+          .map((g: any) => g.sport_id)
+          .filter((id: any) => typeof id === "string" && id.length > 0);
+        const sportIds = Array.from(new Set(rawIds));
+        let opts: Array<{ id: string; name: string }> = [];
+        if (sportIds.length > 0) {
+          const { data: ss2 } = await supabase
+            .from("sports")
+            .select("id,name")
+            .in("id", sportIds);
+          opts = (ss2 || []).map((s: any) => ({
+            id: String(s.id),
+            name: String(s.name),
+          }));
+        } else {
+          const { data: ss3 } = await supabase
+            .from("sports")
+            .select("id,name")
+            .eq("tenant_id", String(appLite?.tenantId || ""));
+          opts = (ss3 || []).map((s: any) => ({
+            id: String(s.id),
+            name: String(s.name),
+          }));
+        }
+        if (opts.length) setEditSports(opts);
+      } finally {
+        setBranchSportsLoading(false);
+      }
+    };
+    loadBranchSports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, editForm.branchId]);
 
   useEffect(() => {
     const loadGroupsForApproval = async () => {
@@ -91,21 +405,40 @@ export default function ApplicationsClient({
       if (!appLite) return;
       setLoadingGroups(true);
       try {
-        let query = supabase
-          .from("groups")
-          .select("id,name,status")
-          .eq("tenant_id", appLite.tenantId)
-          .order("name");
-        if (appLite.branchId) {
-          query = query.eq("branch_id", appLite.branchId);
+        // Primary query: by tenant + branch + sport
+        async function q(
+          branchId?: string | null,
+          sportId?: string | null,
+        ): Promise<any[]> {
+          let query = supabase
+            .from("groups")
+            .select("id,name,status,monthly_fee")
+            .eq("tenant_id", String(appLite?.tenantId || ""))
+            .order("name");
+          if (branchId) query = query.eq("branch_id", branchId);
+          if (sportId) query = query.eq("sport_id", sportId);
+          const { data } = await query;
+          return (data || []).filter((g: any) => g.status === "active");
         }
-        if (appLite.sportId) {
-          query = query.eq("sport_id", appLite.sportId);
+        let data =
+          (await q(appLite.branchId || null, appLite.sportId || null)) || [];
+        // Fallback 1: drop sport filter
+        if (!data.length) {
+          data = (await q(appLite.branchId || null, null)) || [];
         }
-        const { data } = await query;
-        const opts = (data || [])
-          .filter((g: any) => g.status === "active")
-          .map((g: any) => ({ id: String(g.id), name: String(g.name) }));
+        // Fallback 2: drop branch filter
+        if (!data.length) {
+          data = (await q(null, appLite.sportId || null)) || [];
+        }
+        // Fallback 3: tenant-wide active groups
+        if (!data.length) {
+          data = (await q(null, null)) || [];
+        }
+        const opts = data.map((g: any) => ({
+          id: String(g.id),
+          name: String(g.name),
+          monthlyFee: g.monthly_fee != null ? Number(g.monthly_fee) : null,
+        }));
         setApproveGroups(opts);
         const preferred = appLite.preferredGroupId
           ? String(appLite.preferredGroupId)
@@ -115,8 +448,11 @@ export default function ApplicationsClient({
           opts.some((o: { id: string; name: string }) => o.id === preferred)
         ) {
           setApproveGroupId(preferred);
+          const sel = opts.find((o) => o.id === preferred);
+          setSelectedGroupFee(sel?.monthlyFee ?? null);
         } else {
           setApproveGroupId("");
+          setSelectedGroupFee(null);
         }
       } finally {
         setLoadingGroups(false);
@@ -200,6 +536,28 @@ export default function ApplicationsClient({
           status: "active",
         });
 
+        const oAmt = Number(overrideAmount || "");
+        const dPct = Number(discountPercent || "");
+        if (!isNaN(oAmt) || !isNaN(dPct)) {
+          const payload: any = {
+            tenant_id: app.tenant_id,
+            branch_id: branchId,
+            student_id: studentId,
+            effective_from: new Date().toISOString().split("T")[0],
+            created_by: processedBy,
+          };
+          if (!isNaN(oAmt) && overrideAmount) {
+            payload.override_amount = oAmt;
+          } else if (!isNaN(dPct) && discountPercent) {
+            payload.discount_percent = dPct;
+          }
+          if (payload.override_amount || payload.discount_percent) {
+            await supabase.from("student_fee_overrides").upsert(payload, {
+              onConflict: "tenant_id,student_id,branch_id",
+            });
+          }
+        }
+
         const { error: updErr } = await supabase
           .from("applications")
           .update({
@@ -209,6 +567,37 @@ export default function ApplicationsClient({
           })
           .eq("id", confirmDialog.id);
         if (updErr) throw updErr;
+
+        try {
+          const r = await fetch("/api/admin/applications/create-student-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              applicationId: confirmDialog.id,
+              studentId,
+            }),
+          });
+          const j = await r.json().catch(() => ({}));
+          await supabase.from("audit_logs").insert({
+            user_id: processedBy,
+            tenant_id: app.tenant_id,
+            action: "application_approved",
+            entity_type: "applications",
+            entity_id: confirmDialog.id,
+            new_values: {
+              student_id: studentId,
+              group_id: approveGroupId,
+              override_amount: overrideAmount || null,
+              discount_percent: discountPercent || null,
+              auth_user_id: j?.userId || null,
+              account_created_ok: r.ok,
+            },
+            created_at: new Date().toISOString(),
+          } as any);
+          if (!r.ok) {
+            toast.error(j?.error || "Öğrenci hesabı oluşturulamadı");
+          }
+        } catch {}
       } else {
         const { error } = await supabase
           .from("applications")
@@ -218,24 +607,36 @@ export default function ApplicationsClient({
           })
           .eq("id", confirmDialog.id);
         if (error) throw error;
+        try {
+          const { data: u } = await supabase.auth.getUser();
+          const processedBy = u?.user?.id || null;
+          await supabase.from("audit_logs").insert({
+            user_id: processedBy,
+            tenant_id: (selectedApp?.tenantId as any) || null,
+            action: "application_rejected",
+            entity_type: "applications",
+            entity_id: confirmDialog.id,
+            created_at: new Date().toISOString(),
+          } as any);
+        } catch {}
       }
 
       setApplications((prev) =>
         prev.map((app) =>
-          app.id === confirmDialog.id ? { ...app, status: newStatus } : app
-        )
+          app.id === confirmDialog.id ? { ...app, status: newStatus } : app,
+        ),
       );
 
       if (selectedApp?.id === confirmDialog.id) {
         setSelectedApp((prev) =>
-          prev ? { ...prev, status: newStatus } : null
+          prev ? { ...prev, status: newStatus } : null,
         );
       }
 
       toast.success(
         `Başvuru başarıyla ${
           newStatus === "approved" ? "onaylandı" : "reddedildi"
-        }`
+        }`,
       );
       router.refresh();
     } catch (error) {
@@ -452,13 +853,25 @@ export default function ApplicationsClient({
 
       {/* Application Detail Sheet */}
       <Sheet open={!!selectedApp} onOpenChange={() => setSelectedApp(null)}>
-        <SheetContent side="bottom" className="h-[85vh] rounded-t-xl">
+        <SheetContent
+          side="bottom"
+          className="h-[85vh] rounded-t-xl overflow-y-auto"
+        >
           {selectedApp && (
             <>
               <SheetHeader>
                 <SheetTitle>Başvuru Detayı</SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-4">
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    className="border-slate-700 bg-transparent"
+                    onClick={() => setEditMode((v) => !v)}
+                  >
+                    {editMode ? "Düzenlemeyi Kapat" : "Düzenle"}
+                  </Button>
+                </div>
                 {/* Applicant Info */}
                 <div className="flex items-center gap-3">
                   <Avatar className="h-16 w-16">
@@ -515,9 +928,21 @@ export default function ApplicationsClient({
                       </p>
                       <p className="font-medium">
                         {new Date(selectedApp.createdAt).toLocaleDateString(
-                          "tr-TR"
+                          "tr-TR",
                         )}
                       </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-card/50">
+                    <CardContent className="p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Okul</p>
+                      <p className="font-medium">{tenantName || "-"}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-card/50">
+                    <CardContent className="p-3">
+                      <p className="text-xs text-muted-foreground mb-1">Şube</p>
+                      <p className="font-medium">{branchName || "-"}</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -530,18 +955,179 @@ export default function ApplicationsClient({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
-                        {selectedApp.email || "-"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
-                        {selectedApp.phone || "-"}
-                      </span>
-                    </div>
+                    {!editMode ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {selectedApp.email || "-"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {selectedApp.phone || "-"}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-muted-foreground">
+                              Şube
+                            </label>
+                            <Select
+                              value={editForm.branchId || ""}
+                              onValueChange={(v) =>
+                                setEditForm({
+                                  ...editForm,
+                                  branchId: v,
+                                  sportId: "",
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seçin" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {editBranches.map((b) => (
+                                  <SelectItem key={b.id} value={b.id}>
+                                    {b.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">
+                              Branş
+                            </label>
+                            <Select
+                              value={editForm.sportId || ""}
+                              onValueChange={(v) =>
+                                setEditForm({ ...editForm, sportId: v })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={
+                                    branchSportsLoading
+                                      ? "Yükleniyor..."
+                                      : "Seçin"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {editSports.map((s) => (
+                                  <SelectItem key={s.id} value={s.id}>
+                                    {s.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-muted-foreground">
+                              Ad Soyad
+                            </label>
+                            <Input
+                              value={editForm.fullName}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  fullName: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">
+                              Doğum Tarihi
+                            </label>
+                            <Input
+                              type="date"
+                              value={editForm.birthDate || ""}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  birthDate: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-muted-foreground">
+                              Cinsiyet
+                            </label>
+                            <Select
+                              value={editForm.gender || ""}
+                              onValueChange={(v) =>
+                                setEditForm({ ...editForm, gender: v })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seçin" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="male">Erkek</SelectItem>
+                                <SelectItem value="female">Kız</SelectItem>
+                                <SelectItem value="other">Diğer</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">
+                              E-posta
+                            </label>
+                            <Input
+                              type="email"
+                              value={editForm.email || ""}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  email: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-muted-foreground">
+                              Telefon
+                            </label>
+                            <Input
+                              value={editForm.phone || ""}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  phone: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">
+                              Adres
+                            </label>
+                            <Input
+                              value={editForm.address || ""}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  address: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -551,18 +1137,53 @@ export default function ApplicationsClient({
                     <CardTitle className="text-sm">Veli Bilgileri</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
-                        {selectedApp.guardianName || "-"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
-                        {selectedApp.guardianPhone || "-"}
-                      </span>
-                    </div>
+                    {!editMode ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {selectedApp.guardianName || "-"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {selectedApp.guardianPhone || "-"}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground">
+                            Veli Adı Soyadı
+                          </label>
+                          <Input
+                            value={editForm.guardianName || ""}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                guardianName: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">
+                            Veli Telefon
+                          </label>
+                          <Input
+                            value={editForm.guardianPhone || ""}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                guardianPhone: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -578,6 +1199,182 @@ export default function ApplicationsClient({
                       </p>
                     </CardContent>
                   </Card>
+                )}
+
+                <Card className="bg-card/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Onay Geçmişi</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {loadingAudit ? (
+                      <p className="text-sm text-muted-foreground">
+                        Yükleniyor...
+                      </p>
+                    ) : auditEvents.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Kayıt yok</p>
+                    ) : (
+                      auditEvents.map((e) => (
+                        <div
+                          key={e.id}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm truncate">
+                              {String(e.action || "-")}
+                            </p>
+                            {e?.new_values?.error && (
+                              <p className="text-xs text-destructive truncate">
+                                {String(e.new_values.error)}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {e.created_at
+                              ? new Date(e.created_at).toLocaleString("tr-TR")
+                              : "-"}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                {editMode && (
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                      disabled={editLoading}
+                      onClick={async () => {
+                        if (!selectedApp) return;
+                        setEditLoading(true);
+                        try {
+                          const payload: any = {
+                            full_name: editForm.fullName,
+                            tenant_id:
+                              editForm.tenantId || selectedApp.tenantId,
+                            branch_id:
+                              editForm.branchId || selectedApp.branchId || null,
+                            sport_id:
+                              editForm.sportId || selectedApp.sportId || null,
+                            sport_name: null,
+                            birth_date: editForm.birthDate || null,
+                            gender: editForm.gender || null,
+                            phone: editForm.phone || null,
+                            email: editForm.email || null,
+                            guardian_name: editForm.guardianName || null,
+                            guardian_phone: editForm.guardianPhone || null,
+                            address: editForm.address || null,
+                            updated_at: new Date().toISOString(),
+                          };
+                          let upd = await supabase
+                            .from("applications")
+                            .update(payload)
+                            .eq("id", selectedApp.id);
+                          if (
+                            upd.error &&
+                            String(upd.error.message || "")
+                              .toLowerCase()
+                              .includes("updated_at")
+                          ) {
+                            const p2 = { ...payload };
+                            delete (p2 as any).updated_at;
+                            upd = await supabase
+                              .from("applications")
+                              .update(p2)
+                              .eq("id", selectedApp.id);
+                          }
+                          if (upd.error) {
+                            toast.error("Güncelleme başarısız");
+                          } else {
+                            toast.success("Başvuru bilgileri güncellendi");
+                            setApplications((prev) =>
+                              prev.map((a) =>
+                                a.id === selectedApp.id
+                                  ? {
+                                      ...a,
+                                      tenantId: (editForm.tenantId ||
+                                        a.tenantId) as string,
+                                      branchId: (editForm.branchId ||
+                                        a.branchId) as string,
+                                      sportId: (editForm.sportId ||
+                                        a.sportId) as string,
+                                      fullName: editForm.fullName,
+                                      birthDate:
+                                        editForm.birthDate || undefined,
+                                      gender:
+                                        (editForm.gender as
+                                          | "male"
+                                          | "female"
+                                          | "other"
+                                          | undefined) || undefined,
+                                      phone: editForm.phone || undefined,
+                                      email: editForm.email || undefined,
+                                      guardianName:
+                                        editForm.guardianName || undefined,
+                                      guardianPhone:
+                                        editForm.guardianPhone || undefined,
+                                      address: editForm.address || undefined,
+                                    }
+                                  : a,
+                              ),
+                            );
+                            setSelectedApp((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    tenantId: (editForm.tenantId ||
+                                      prev.tenantId) as string,
+                                    branchId: (editForm.branchId ||
+                                      prev.branchId) as string,
+                                    sportId: (editForm.sportId ||
+                                      prev.sportId) as string,
+                                    fullName: editForm.fullName,
+                                    birthDate: editForm.birthDate || undefined,
+                                    gender:
+                                      (editForm.gender as
+                                        | "male"
+                                        | "female"
+                                        | "other"
+                                        | undefined) || undefined,
+                                    phone: editForm.phone || undefined,
+                                    email: editForm.email || undefined,
+                                    guardianName:
+                                      editForm.guardianName || undefined,
+                                    guardianPhone:
+                                      editForm.guardianPhone || undefined,
+                                    address: editForm.address || undefined,
+                                  }
+                                : null,
+                            );
+                            setEditMode(false);
+                          }
+                        } finally {
+                          setEditLoading(false);
+                        }
+                      }}
+                    >
+                      Kaydet
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-slate-700 bg-transparent"
+                      onClick={() => {
+                        setEditMode(false);
+                        setEditForm({
+                          fullName: selectedApp.fullName,
+                          birthDate: selectedApp.birthDate || "",
+                          gender: selectedApp.gender || "",
+                          phone: selectedApp.phone || "",
+                          email: selectedApp.email || "",
+                          guardianName: selectedApp.guardianName || "",
+                          guardianPhone: selectedApp.guardianPhone || "",
+                          address: selectedApp.address || "",
+                        });
+                      }}
+                    >
+                      İptal
+                    </Button>
+                  </div>
                 )}
 
                 {/* Actions */}
@@ -641,7 +1438,11 @@ export default function ApplicationsClient({
               <p className="text-xs text-muted-foreground">Grup seçin</p>
               <Select
                 value={approveGroupId}
-                onValueChange={(v) => setApproveGroupId(v)}
+                onValueChange={(v) => {
+                  setApproveGroupId(v);
+                  const sel = approveGroups.find((g) => g.id === v);
+                  setSelectedGroupFee(sel?.monthlyFee ?? null);
+                }}
               >
                 <SelectTrigger className="bg-card/50">
                   <SelectValue
@@ -654,10 +1455,49 @@ export default function ApplicationsClient({
                   {approveGroups.map((g) => (
                     <SelectItem key={g.id} value={g.id}>
                       {g.name}
+                      {g.monthlyFee != null
+                        ? ` — ₺${Number(g.monthlyFee).toLocaleString("tr-TR")}`
+                        : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Grup Ücreti
+                  </p>
+                  <p className="font-medium">
+                    {selectedGroupFee != null
+                      ? `₺${Number(selectedGroupFee).toLocaleString("tr-TR")}`
+                      : "-"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">
+                    Öğrenci Aylık Ücreti (override)
+                  </label>
+                  <Input
+                    value={overrideAmount}
+                    onChange={(e) => setOverrideAmount(e.target.value)}
+                    placeholder={
+                      selectedGroupFee != null
+                        ? String(selectedGroupFee)
+                        : "örn. 1500"
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">
+                  İndirim (%) — boş bırakılabilir
+                </label>
+                <Input
+                  value={discountPercent}
+                  onChange={(e) => setDiscountPercent(e.target.value)}
+                  placeholder="örn. 10"
+                />
+              </div>
             </div>
           )}
           <AlertDialogFooter>

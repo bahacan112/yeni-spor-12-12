@@ -1,4 +1,6 @@
 packages:
   - e2e
+
 onlyBuiltDependencies:
+  - sharp
   - unrs-resolver

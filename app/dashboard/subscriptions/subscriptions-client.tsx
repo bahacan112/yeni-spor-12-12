@@ -64,21 +64,23 @@ export default function SubscriptionsClient({
 }: Props) {
   const router = useRouter();
   const [subState, setSubState] = useState<TenantSubscription | null>(
-    subscription
+    subscription,
   );
   const [plans, setPlans] = useState<any[]>([]);
   const [planId, setPlanId] = useState<string | undefined>(undefined);
+  const [planSlug, setPlanSlug] = useState<string | undefined>(undefined);
   const [autoRenew, setAutoRenew] = useState<boolean>(
-    !!subscription?.autoRenew
+    !!subscription?.autoRenew,
   );
   const [paymentMethod, setPaymentMethod] = useState<string>(
-    subscription?.paymentMethod || ""
+    subscription?.paymentMethod || "",
   );
   const [loadingPlan, setLoadingPlan] = useState(false);
   const [loadingPM, setLoadingPM] = useState(false);
   const [loadingAR, setLoadingAR] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
 
   useEffect(() => {
     setAutoRenew(!!subscription?.autoRenew);
@@ -86,7 +88,16 @@ export default function SubscriptionsClient({
     setSubState(subscription);
   }, [subscription]);
 
-  async function fetchPlans() {}
+  async function fetchPlans() {
+    try {
+      const res = await fetch("/api/billing/plans");
+      const json = await res.json().catch(() => ({ plans: [] }));
+      const list = json.plans || json || [];
+      setPlans(list);
+    } catch {
+      setPlans([]);
+    }
+  }
 
   function mapPlanRow(row: any): PlatformPlan {
     return {
@@ -172,7 +183,7 @@ export default function SubscriptionsClient({
                   subState.status !== "active" ? "active" : subState.status,
                 updatedAt: new Date().toISOString(),
               }
-            : subState
+            : subState,
         );
         setError(null);
         setSuccess("Ödeme yöntemi güncellendi");
@@ -204,7 +215,7 @@ export default function SubscriptionsClient({
                 autoRenew: next,
                 updatedAt: new Date().toISOString(),
               }
-            : subState
+            : subState,
         );
         setError(null);
         setSuccess(next ? "Oto yenileme açık" : "Oto yenileme kapalı");
@@ -251,12 +262,134 @@ export default function SubscriptionsClient({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            className="bg-blue-600 hover:bg-blue-700"
-            onClick={() => router.push("/pricing")}
+          <Dialog
+            open={planDialogOpen}
+            onOpenChange={(o) => {
+              setPlanDialogOpen(o);
+              if (o && plans.length === 0) fetchPlans();
+            }}
           >
-            Planı Değiştir
-          </Button>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                Planı Değiştir
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-slate-900 border-slate-800">
+              <DialogHeader>
+                <DialogTitle className="text-white">Plan Seç</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  className="border-slate-700 text-slate-300 bg-transparent"
+                  onClick={() => {
+                    setPlanId(undefined);
+                    fetchPlans();
+                  }}
+                >
+                  Planları Yükle
+                </Button>
+                <Select
+                  value={planId}
+                  onValueChange={(v) => {
+                    const nextId = v && v !== "undefined" ? v : undefined;
+                    setPlanId(nextId);
+                    const sel =
+                      (plans || []).find(
+                        (p) => String(p.id ?? "") === String(nextId ?? ""),
+                      ) || (plans || []).find((p) => p.slug === v);
+                    setPlanSlug(sel?.slug);
+                  }}
+                >
+                  <SelectTrigger className="border-slate-700 bg-slate-800 text-white">
+                    <SelectValue placeholder="Plan seçin" />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-700 bg-slate-800">
+                    {plans.map((p) => (
+                      <SelectItem
+                        key={p.id}
+                        value={String(p.id ?? "")}
+                        className="text-white"
+                      >
+                        {p.name} — ₺
+                        {Number(p.monthly_price || 0).toLocaleString("tr-TR")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-slate-400">
+                  Yükseltme ise hemen uygulanır ve simülasyon ödemesi
+                  oluşturulur. Düşürme ise dönem sonunda geçerlidir; mevcut
+                  özellikler dönem sonuna kadar kullanılabilir.
+                </div>
+                <DialogFooter>
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={!planId || planId === "undefined"}
+                    onClick={async () => {
+                      if (!planId) return;
+                      setLoadingPlan(true);
+                      setError(null);
+                      setSuccess(null);
+                      try {
+                        const res = await fetch(
+                          "/api/billing/simulate-change",
+                          {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ planId, planSlug }),
+                          },
+                        );
+                        const json = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          setError(json.error || "Plan değiştirilemedi");
+                        } else {
+                          const sel = (plans || []).find(
+                            (p) => String(p.id ?? "") === String(planId),
+                          );
+                          const mapped = sel ? mapPlanRow(sel) : subState?.plan;
+                          setSubState(
+                            subState
+                              ? {
+                                  ...subState,
+                                  planId: String(planId),
+                                  plan: mapped,
+                                  status:
+                                    json.effect === "upgraded_now"
+                                      ? "active"
+                                      : subState.status,
+                                  updatedAt: new Date().toISOString(),
+                                  pendingDowngradePlanId:
+                                    json.effect === "scheduled_downgrade"
+                                      ? String(planId)
+                                      : subState.pendingDowngradePlanId,
+                                  pendingDowngradeEffectiveAt:
+                                    json.effect === "scheduled_downgrade"
+                                      ? String(json.effectiveAt || "")
+                                      : subState.pendingDowngradeEffectiveAt,
+                                }
+                              : subState,
+                          );
+                          setSuccess(
+                            json.effect === "upgraded_now"
+                              ? "Plan yükseltildi ve simülasyon ödemesi oluşturuldu"
+                              : `Plan düşürme dönem sonuna planlandı (${new Date(
+                                  json.effectiveAt,
+                                ).toLocaleDateString("tr-TR")})`,
+                          );
+                          router.refresh();
+                        }
+                      } finally {
+                        setLoadingPlan(false);
+                      }
+                    }}
+                  >
+                    Simüle Ödeme ile Planı Değiştir
+                  </Button>
+                </DialogFooter>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Dialog>
             <DialogTrigger asChild>
               <Button
@@ -393,6 +526,15 @@ export default function SubscriptionsClient({
             <CardTitle>Abonelik Ödemeleri</CardTitle>
           </CardHeader>
           <CardContent>
+            {subState?.pendingDowngradePlanId &&
+              subState?.pendingDowngradeEffectiveAt && (
+                <div className="mb-3 rounded-md border border-amber-600 bg-amber-950/30 p-3 text-amber-200 text-sm">
+                  Plan düşürme planlandı. Geçerlilik tarihi:{" "}
+                  {new Date(
+                    subState.pendingDowngradeEffectiveAt,
+                  ).toLocaleDateString("tr-TR")}
+                </div>
+              )}
             <Table>
               <TableHeader>
                 <TableRow>

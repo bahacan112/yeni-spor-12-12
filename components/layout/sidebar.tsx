@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronRight,
   BarChart3,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ const menuItems = [
         label: "Eğitmenler",
       },
       { href: "/dashboard/venues", icon: MapPin, label: "Sahalar" },
+      { href: "/dashboard/reservations", icon: CalendarDays, label: "Rezervasyonlar" },
       { href: "/dashboard/applications", icon: FileText, label: "Başvurular" },
       {
         href: "/dashboard/registration-links",

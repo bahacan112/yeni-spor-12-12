@@ -143,7 +143,7 @@ export async function getStudentDetails(studentId: string) {
   // Fetch student's groups
   const { data: studentGroups, error: groupsError } = await supabase
     .from("student_groups")
-    .select("*, group:groups(*)")
+    .select("*, group:groups!student_groups_group_id_fkey(*)")
     .eq("student_id", studentId)
     .eq("status", "active");
 
@@ -152,6 +152,15 @@ export async function getStudentDetails(studentId: string) {
   }
 
   const groups = studentGroups?.map((sg) => sg.group).filter((g) => g) || [];
+
+  // Fetch ALL active groups in this branch (for group selector dropdown)
+  const { data: allBranchGroups } = await supabase
+    .from("groups")
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .eq("branch_id", student.branch_id)
+    .eq("status", "active")
+    .order("name", { ascending: true });
 
   // Fetch monthly dues
   const { data: monthlyDues, error: duesError } = await supabase
@@ -192,6 +201,7 @@ export async function getStudentDetails(studentId: string) {
   return {
     student: mapStudent(student),
     groups: (groups as any[]).map(mapGroupFromJoin) as Group[],
+    allBranchGroups: ((allBranchGroups || []) as any[]).map(mapGroupFromJoin) as Group[],
     monthlyDues: (monthlyDues || []).map(mapMonthlyDueFromRaw) as MonthlyDue[],
   };
 }

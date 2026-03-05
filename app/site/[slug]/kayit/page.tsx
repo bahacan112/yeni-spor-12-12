@@ -114,7 +114,7 @@ export default function RegistrationPage() {
           phone: form.phone,
           email: form.email,
           guardianName: form.guardianName,
-          guardianPhone: form.guardianPhone,
+          guardianPhone: form.guardianPhone || form.phone,
           address: form.address,
           message: `${
             form.isLicensed === "true" ? "[LICENSED:true]" : "[LICENSED:false]"
@@ -135,10 +135,10 @@ export default function RegistrationPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full bg-card/50">
-          <CardContent className="pt-6 text-center">
-            <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-0">
+        <Card className="max-w-md w-full bg-card/50 rounded-none">
+          <CardContent className="pt-6 text-center p-4">
+            <div className="w-16 h-16 bg-emerald-500/10 rounded-none flex items-center justify-center mx-auto mb-4">
               <Check className="h-8 w-8 text-emerald-500" />
             </div>
             <h2 className="text-2xl font-bold mb-2">Başvurunuz Alındı!</h2>
@@ -146,7 +146,7 @@ export default function RegistrationPage() {
               Başvurunuz incelemeye alınmıştır. En kısa sürede sizinle iletişime
               geçeceğiz.
             </p>
-            <Button asChild>
+            <Button asChild className="rounded-none">
               <Link href={`/site/${slug}`}>Ana Sayfaya Dön</Link>
             </Button>
           </CardContent>
@@ -159,8 +159,8 @@ export default function RegistrationPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container mx-auto px-4 h-14 flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
+        <div className="container mx-auto px-0 h-14 flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild className="rounded-none">
             <Link href={`/site/${slug}`}>
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -171,13 +171,13 @@ export default function RegistrationPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-lg">
+      <div className="container mx-auto px-0 py-4 max-w-lg">
         {/* Progress */}
         <div className="flex items-center gap-2 mb-6">
           {[1, 2, 3, 4].map((s) => (
             <div key={s} className="flex-1 flex items-center gap-2">
               <div
-                className={`h-2 flex-1 rounded-full ${
+                className={`h-2 flex-1 rounded-none ${
                   s <= step ? "bg-primary" : "bg-muted"
                 }`}
               />
@@ -199,7 +199,7 @@ export default function RegistrationPage() {
               {sportsData.map((sport) => (
                 <Card
                   key={sport.id}
-                  className={`cursor-pointer transition-colors ${
+                  className={`cursor-pointer transition-colors rounded-none ${
                     selectedSport === sport.id
                       ? "border-primary bg-primary/5"
                       : "bg-card/50 border-border/50 hover:bg-card/80"
@@ -211,7 +211,7 @@ export default function RegistrationPage() {
                       <p className="font-medium">{sport.name}</p>
                     </div>
                     <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      className={`w-5 h-5 rounded-none border-2 flex items-center justify-center ${
                         selectedSport === sport.id
                           ? "border-primary bg-primary"
                           : "border-muted-foreground"
@@ -227,7 +227,7 @@ export default function RegistrationPage() {
             </div>
 
             <Button
-              className="w-full"
+              className="w-full rounded-none"
               size="lg"
               disabled={!selectedSport}
               onClick={() => setStep(2)}
@@ -252,7 +252,7 @@ export default function RegistrationPage() {
               {(branches || []).map((b) => (
                 <Card
                   key={b.id}
-                  className={`cursor-pointer transition-colors ${
+                  className={`cursor-pointer transition-colors rounded-none ${
                     selectedBranchId === String(b.id)
                       ? "border-primary bg-primary/5"
                       : "bg-card/50 border-border/50 hover:bg-card/80"
@@ -267,7 +267,7 @@ export default function RegistrationPage() {
                       </p>
                     </div>
                     <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      className={`w-5 h-5 rounded-none border-2 flex items-center justify-center ${
                         selectedBranchId === String(b.id)
                           ? "border-primary bg-primary"
                           : "border-muted-foreground"
@@ -285,13 +285,13 @@ export default function RegistrationPage() {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="flex-1 bg-transparent"
+                className="flex-1 bg-transparent rounded-none"
                 onClick={() => setStep(1)}
               >
                 Geri
               </Button>
               <Button
-                className="flex-1"
+                className="flex-1 rounded-none"
                 disabled={!selectedBranchId}
                 onClick={() => setStep(3)}
               >
@@ -312,7 +312,7 @@ export default function RegistrationPage() {
               </p>
             </div>
 
-            <Card className="bg-card/50 border-border/50">
+            <Card className="bg-card/50 border-border/50 rounded-none">
               <CardContent className="p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
@@ -328,6 +328,7 @@ export default function RegistrationPage() {
                           }`.trim(),
                         })
                       }
+                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -343,6 +344,7 @@ export default function RegistrationPage() {
                           }`.trim(),
                         })
                       }
+                      required
                     />
                   </div>
                 </div>
@@ -355,6 +357,7 @@ export default function RegistrationPage() {
                     onChange={(e) =>
                       setForm({ ...form, birthDate: e.target.value })
                     }
+                    required
                   />
                 </div>
 
@@ -409,12 +412,22 @@ export default function RegistrationPage() {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="flex-1 bg-transparent"
+                className="flex-1 bg-transparent rounded-none"
                 onClick={() => setStep(2)}
               >
                 Geri
               </Button>
-              <Button className="flex-1" onClick={() => setStep(4)}>
+              <Button
+                className="flex-1 rounded-none"
+                onClick={() => {
+                  if (!form.fullName || !form.birthDate || !form.gender) {
+                    setError("Lütfen tüm öğrenci bilgilerini doldurun");
+                    return;
+                  }
+                  setError(null);
+                  setStep(4);
+                }}
+              >
                 Devam Et
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
@@ -432,7 +445,7 @@ export default function RegistrationPage() {
               </p>
             </div>
 
-            <Card className="bg-card/50 border-border/50">
+            <Card className="bg-card/50 border-border/50 rounded-none">
               <CardContent className="p-4 space-y-4">
                 <div className="space-y-2">
                   <Label>Veli Adı Soyadı</Label>
@@ -442,6 +455,7 @@ export default function RegistrationPage() {
                     onChange={(e) =>
                       setForm({ ...form, guardianName: e.target.value })
                     }
+                    required
                   />
                 </div>
 
@@ -454,6 +468,7 @@ export default function RegistrationPage() {
                     onChange={(e) =>
                       setForm({ ...form, phone: e.target.value })
                     }
+                    required
                   />
                 </div>
 
@@ -466,6 +481,7 @@ export default function RegistrationPage() {
                     onChange={(e) =>
                       setForm({ ...form, email: e.target.value })
                     }
+                    required
                   />
                 </div>
 
@@ -482,10 +498,10 @@ export default function RegistrationPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-card/50 border-border/50">
+            <Card className="bg-card/50 border-border/50 rounded-none">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <Checkbox id="terms" className="mt-1" />
+                  <Checkbox id="terms" className="mt-1" required />
                   <label
                     htmlFor="terms"
                     className="text-sm text-muted-foreground cursor-pointer"
@@ -503,12 +519,21 @@ export default function RegistrationPage() {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="flex-1 bg-transparent"
+                className="flex-1 bg-transparent rounded-none"
                 onClick={() => setStep(3)}
               >
                 Geri
               </Button>
-              <Button className="flex-1" onClick={handleSubmit}>
+              <Button
+                className="flex-1 rounded-none"
+                onClick={() => {
+                  if (!form.guardianName || !form.phone || !form.email) {
+                    setError("Lütfen veli ve iletişim bilgilerini doldurun");
+                    return;
+                  }
+                  handleSubmit();
+                }}
+              >
                 <Check className="h-4 w-4 mr-1" />
                 Başvuruyu Gönder
               </Button>

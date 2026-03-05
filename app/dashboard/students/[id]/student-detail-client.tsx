@@ -47,12 +47,14 @@ import { toast } from "sonner";
 interface StudentDetailClientProps {
   student: Student;
   groups: Group[];
+  allBranchGroups: Group[];
   monthlyDues: MonthlyDue[];
 }
 
 export function StudentDetailClient({
   student,
   groups,
+  allBranchGroups,
   monthlyDues,
 }: StudentDetailClientProps) {
   const router = useRouter();
@@ -239,8 +241,8 @@ export function StudentDetailClient({
     setPaymentSheetOpen(true);
   };
 
-  // Filter groups based on birth date and license
-  const availableGroups = groups.filter((group) => {
+  // Filter ALL branch groups based on birth date and license (for the group selector)
+  const availableGroups = allBranchGroups.filter((group) => {
     if (group.status !== "active") return false;
 
     // Check birth date

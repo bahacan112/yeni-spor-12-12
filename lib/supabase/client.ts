@@ -15,7 +15,7 @@ export function getSupabaseClient() {
           apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         },
       },
-    }
+    },
   );
 
   return client;

@@ -89,7 +89,7 @@ export function VenuesClient({
   const filteredVenues = venues.filter(
     (venue) =>
       venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      venue.type?.toLowerCase().includes(searchQuery.toLowerCase())
+      venue.type?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const formatCurrency = (amount: number) => {
@@ -381,7 +381,7 @@ export function VenuesClient({
               <div className="flex items-start gap-4">
                 <div
                   className={`flex h-12 w-12 items-center justify-center rounded-xl ${getTypeIcon(
-                    venue.type
+                    venue.type,
                   )}`}
                 >
                   <MapPin className="h-6 w-6" />
@@ -463,7 +463,7 @@ export function VenuesClient({
                           onClick={async () => {
                             if (
                               !confirm(
-                                "Sahayı silmek istediğinize emin misiniz?"
+                                "Sahayı silmek istediğinize emin misiniz?",
                               )
                             ) {
                               return;

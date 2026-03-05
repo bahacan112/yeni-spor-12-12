@@ -33,7 +33,7 @@ export async function getApplicationsData() {
       *,
       preferredGroup:groups(name),
       sport:sports(*)
-    `
+    `,
     )
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false });
@@ -83,7 +83,7 @@ export async function getApplicationsData() {
       processedBy: app.processed_by,
       processedAt: app.processed_at,
       createdAt: app.created_at,
-    })
+    }),
   );
 
   return {

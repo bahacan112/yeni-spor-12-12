@@ -30,10 +30,7 @@ export function LandingFooter() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
-                <Dumbbell className="h-6 w-6 text-white" />
-              </div>
-              <span className="text-xl font-bold text-white">SporYonetim</span>
+              <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
             </Link>
             <p className="mt-4 text-sm text-slate-400 max-w-sm">
               Spor okulları ve akademileri için tasarlanmış modern yönetim platformu. Öğrenci takibi, aidat yönetimi ve
@@ -102,7 +99,7 @@ export function LandingFooter() {
         </div>
 
         <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-slate-400">© 2025 SporYonetim. Tüm hakları saklıdır.</p>
+          <p className="text-sm text-slate-400">© 2025 Tüm hakları saklıdır.</p>
           <div className="flex gap-6">
             {footerLinks.legal.map((link) => (
               <Link key={link.href} href={link.href} className="text-xs text-slate-400 hover:text-white">

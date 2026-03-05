@@ -38,21 +38,22 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
   );
   const isComplete = currentIndex === -1;
 
+  const fetchBranches = async () => {
+    const { data } = await supabase
+      .from("branches")
+      .select("id, name, is_main")
+      .eq("tenant_id", tenantId);
+    setBranches(
+      (data || []).map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        isMain: !!b.is_main,
+      }))
+    );
+  };
+
   useEffect(() => {
-    const run = async () => {
-      const { data } = await supabase
-        .from("branches")
-        .select("id, name, is_main")
-        .eq("tenant_id", tenantId);
-      setBranches(
-        (data || []).map((b: any) => ({
-          id: b.id,
-          name: b.name,
-          isMain: !!b.is_main,
-        }))
-      );
-    };
-    run();
+    fetchBranches();
   }, [tenantId]);
 
   useEffect(() => {
@@ -161,7 +162,7 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
   };
 
   const onAfterSubmit = async () => {
-    await refreshCounts();
+    await Promise.all([refreshCounts(), fetchBranches()]);
   };
 
   const BranchForm = () => {
@@ -181,7 +182,7 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
     return (
       <div className="space-y-3">
         <input
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Şube adı"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -220,7 +221,7 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
     return (
       <div className="space-y-3">
         <input
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Eğitmen adı"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
@@ -251,7 +252,7 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
     return (
       <div className="space-y-3">
         <input
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Branş adı"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -269,10 +270,16 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
 
   const GroupForm = () => {
     const [name, setName] = useState("");
-    const [branchId, setBranchId] = useState(
-      () => branches.find((b) => b.isMain)?.id || branches[0]?.id || ""
-    );
+    const [branchId, setBranchId] = useState("");
     const [monthlyFee, setMonthlyFee] = useState("");
+
+    // Update branchId when branches load or change
+    useEffect(() => {
+      if (!branchId && branches.length > 0) {
+        setBranchId(branches.find((b) => b.isMain)?.id || branches[0].id);
+      }
+    }, [branches, branchId]);
+
     const submit = async () => {
       setLoading(true);
       await supabase.from("groups").insert({
@@ -289,13 +296,13 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
     return (
       <div className="space-y-3">
         <input
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Grup adı"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <select
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={branchId}
           onChange={(e) => setBranchId(e.target.value)}
         >
@@ -307,7 +314,7 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
           ))}
         </select>
         <input
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Aylık ücret (opsiyonel)"
           value={monthlyFee}
           onChange={(e) => setMonthlyFee(e.target.value)}
@@ -338,7 +345,7 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
     return (
       <div className="space-y-3">
         <input
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Saha/Salon adı"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -356,62 +363,135 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
 
   const StudentForm = () => {
     const [fullName, setFullName] = useState("");
-    const [branchId, setBranchId] = useState(
-      () => branches.find((b) => b.isMain)?.id || branches[0]?.id || ""
-    );
+    const [branchId, setBranchId] = useState("");
+    const [groups, setGroups] = useState<any[]>([]);
+    const [groupId, setGroupId] = useState("");
+    const [monthlyFee, setMonthlyFee] = useState("");
+
+    // Update branchId when branches load or change
+    useEffect(() => {
+      if (!branchId && branches.length > 0) {
+        setBranchId(branches.find((b) => b.isMain)?.id || branches[0].id);
+      }
+    }, [branches, branchId]);
+
+    useEffect(() => {
+      if (branchId) {
+        supabase
+          .from("groups")
+          .select("id, name, monthly_fee")
+          .eq("tenant_id", tenantId)
+          .eq("branch_id", branchId)
+          .eq("status", "active")
+          .then(({ data }: { data: any }) => {
+            setGroups(data || []);
+            setGroupId("");
+            setMonthlyFee("");
+          });
+      }
+    }, [branchId, tenantId, supabase]);
+
+    const handleGroupChange = (e: any) => {
+      const gid = e.target.value;
+      setGroupId(gid);
+      const g = groups.find((x) => x.id === gid);
+      if (g && g.monthly_fee !== null) setMonthlyFee(g.monthly_fee.toString());
+      else setMonthlyFee("");
+    };
+
     const [birthDate, setBirthDate] = useState<string>("");
     const [gender, setGender] = useState<string>("");
     const [phone, setPhone] = useState<string>("");
     const [email, setEmail] = useState<string>("");
     const [emergencyName, setEmergencyName] = useState<string>("");
     const [emergencyPhone, setEmergencyPhone] = useState<string>("");
+    
     const submit = async () => {
       setLoading(true);
-      await supabase.from("students").insert({
-        tenant_id: tenantId,
-        branch_id: branchId,
-        full_name: fullName,
-        birth_date: birthDate || null,
-        gender: gender || null,
-        phone: phone || null,
-        email: email || null,
-        emergency_contact_name: emergencyName || null,
-        emergency_contact_phone: emergencyPhone || null,
-        status: "active",
-      });
+      const { data: studentData, error: studentError } = await supabase
+        .from("students")
+        .insert({
+          tenant_id: tenantId,
+          branch_id: branchId,
+          full_name: fullName,
+          birth_date: birthDate || null,
+          gender: gender || null,
+          phone: phone || null,
+          email: email || null,
+          emergency_contact_name: emergencyName || null,
+          emergency_contact_phone: emergencyPhone || null,
+          status: "active",
+        })
+        .select("id")
+        .single();
+
+      if (!studentError && studentData && groupId) {
+        await supabase.from("student_groups").insert({
+          tenant_id: tenantId,
+          student_id: studentData.id,
+          group_id: groupId,
+          status: "active",
+          monthly_fee: monthlyFee ? Number(monthlyFee) : null,
+          enrollment_date: new Date().toISOString().split("T")[0],
+        });
+      }
+
       setLoading(false);
       await onAfterSubmit();
     };
     return (
       <div className="space-y-3">
         <input
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Öğrenci adı"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
         />
-        <select
-          className="border rounded px-3 py-2 w-full"
-          value={branchId}
-          onChange={(e) => setBranchId(e.target.value)}
-        >
-          <option value="">Şube seçin</option>
-          {branches.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <select
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            value={branchId}
+            onChange={(e) => setBranchId(e.target.value)}
+          >
+            <option value="">Şube seçin</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            value={groupId}
+            onChange={handleGroupChange}
+          >
+            <option value="">Grup seçin (Opsiyonel)</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {groupId && (
+          <input
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder="Aylık Aidat (Opsiyonel)"
+            value={monthlyFee}
+            onChange={(e) => setMonthlyFee(e.target.value)}
+            type="number"
+          />
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <input
             type="date"
-            className="border rounded px-3 py-2 w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             placeholder="Doğum tarihi"
             value={birthDate}
             onChange={(e) => setBirthDate(e.target.value)}
           />
           <select
-            className="border rounded px-3 py-2 w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={gender}
             onChange={(e) => setGender(e.target.value)}
           >
@@ -423,13 +503,13 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <input
-            className="border rounded px-3 py-2 w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             placeholder="Telefon"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
           <input
-            className="border rounded px-3 py-2 w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             placeholder="E-posta"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -437,13 +517,13 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <input
-            className="border rounded px-3 py-2 w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             placeholder="Acil durum kişi adı"
             value={emergencyName}
             onChange={(e) => setEmergencyName(e.target.value)}
           />
           <input
-            className="border rounded px-3 py-2 w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             placeholder="Acil durum telefonu"
             value={emergencyPhone}
             onChange={(e) => setEmergencyPhone(e.target.value)}
@@ -464,9 +544,15 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
 
   const TrainingForm = () => {
     const [title, setTitle] = useState("");
-    const [branchId, setBranchId] = useState(
-      () => branches.find((b) => b.isMain)?.id || branches[0]?.id || ""
-    );
+    const [branchId, setBranchId] = useState("");
+
+    // Update branchId when branches load or change
+    useEffect(() => {
+      if (!branchId && branches.length > 0) {
+        setBranchId(branches.find((b) => b.isMain)?.id || branches[0].id);
+      }
+    }, [branches, branchId]);
+
     const [trainingDate, setTrainingDate] = useState<string>(
       new Date().toISOString().slice(0, 10)
     );
@@ -489,13 +575,13 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
     return (
       <div className="space-y-3">
         <input
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           placeholder="Antrenman başlığı"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
         <select
-          className="border rounded px-3 py-2 w-full"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={branchId}
           onChange={(e) => setBranchId(e.target.value)}
         >
@@ -509,17 +595,17 @@ export default function SetupClient({ tenantId, initialSteps }: Props) {
         <div className="grid grid-cols-3 gap-2">
           <input
             type="date"
-            className="border rounded px-3 py-2 w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={trainingDate}
             onChange={(e) => setTrainingDate(e.target.value)}
           />
           <input
-            className="border rounded px-3 py-2 w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
           />
           <input
-            className="border rounded px-3 py-2 w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
           />

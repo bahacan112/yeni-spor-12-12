@@ -20,14 +20,42 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Create Tenant
+    // 1. Check and generate unique slug
+    let finalSlug = slug;
+    const { data: existingTenant } = await supabaseAdmin
+      .from("tenants")
+      .select("id")
+      .eq("slug", finalSlug)
+      .single();
+
+    if (existingTenant) {
+      // Find similar slugs
+      const { data: similarTenants } = await supabaseAdmin
+        .from("tenants")
+        .select("slug")
+        .ilike("slug", `${slug}-%`);
+        
+      let maxSuffix = 0;
+      similarTenants?.forEach(t => {
+        const parts = t.slug.split('-');
+        const lastPart = parts[parts.length - 1];
+        const num = parseInt(lastPart);
+        if (!isNaN(num) && num > maxSuffix) {
+          maxSuffix = num;
+        }
+      });
+      
+      finalSlug = `${slug}-${maxSuffix + 1}`;
+    }
+
+    // 2. Create Tenant
     const planSlug = planId.replace("plan-", "");
 
     const { data: tenant, error: tenantError } = await supabaseAdmin
       .from("tenants")
       .insert({
         name: schoolName,
-        slug: slug,
+        slug: finalSlug,
         email: email,
         phone: phone,
         subscription_plan: planSlug,

@@ -20,10 +20,18 @@ export async function POST(req: NextRequest) {
       message,
     } = body || {};
 
-    if (!slug || !fullName) {
+    if (
+      !slug ||
+      !fullName ||
+      !birthDate ||
+      !gender ||
+      !phone ||
+      !email ||
+      !guardianName
+    ) {
       return NextResponse.json(
-        { error: "Eksik zorunlu alanlar" },
-        { status: 400 }
+        { error: "Eksik zorunlu alanlar (adres dışında tüm alanlar zorunlu)" },
+        { status: 400 },
       );
     }
 
@@ -56,7 +64,7 @@ export async function POST(req: NextRequest) {
         if (!rl.is_active || isExpired) {
           return NextResponse.json(
             { error: "Geçersiz kayıt linki" },
-            { status: 400 }
+            { status: 400 },
           );
         }
         registrationLink = rl;
@@ -101,31 +109,63 @@ export async function POST(req: NextRequest) {
       sport_id: resolvedSportId,
       sport_name: sportName || null,
       full_name: fullName,
-      birth_date: birthDate || null,
-      phone: phone || null,
-      email: email || null,
-      guardian_name: guardianName || null,
-      guardian_phone: guardianPhone || null,
+      birth_date: birthDate,
+      phone: phone,
+      email: email,
+      guardian_name: guardianName,
+      guardian_phone: guardianPhone || phone,
       preferred_group_id: registrationLink?.group_id || null,
-      gender: gender || null,
+      gender: gender,
       address: address || null,
       message: message || null,
       status: "pending",
     };
 
-    const { data, error } = await supabase
-      .from("applications")
-      .insert(payload)
-      .select("id")
-      .single();
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    async function tryInsert(p: any) {
+      return await supabase
+        .from("applications")
+        .insert(p)
+        .select("id")
+        .single();
     }
-    return NextResponse.json({ ok: true, id: data.id });
+    let ins = await tryInsert(payload);
+    if (ins.error && typeof ins.error.message === "string") {
+      const code = String((ins.error as any)?.code || "");
+      if (code === "23505") {
+        return NextResponse.json(
+          { error: "Bu okulda bu e-posta ve telefonla zaten bir başvuru var" },
+          { status: 409 },
+        );
+      }
+      const msg = ins.error.message.toLowerCase();
+      if (msg.includes("duplicate") || msg.includes("unique")) {
+        return NextResponse.json(
+          { error: "Bu okulda bu e-posta ve telefonla zaten bir başvuru var" },
+          { status: 409 },
+        );
+      }
+      const p2 = { ...payload };
+      let retried = false;
+      if (msg.includes("address")) {
+        delete (p2 as any).address;
+        retried = true;
+      }
+      if (msg.includes("gender")) {
+        delete (p2 as any).gender;
+        retried = true;
+      }
+      if (retried) {
+        ins = await tryInsert(p2);
+      }
+    }
+    if (ins.error) {
+      return NextResponse.json({ error: ins.error.message }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, id: (ins.data as any).id });
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message || "İşlem başarısız" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
