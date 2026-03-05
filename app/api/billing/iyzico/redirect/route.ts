@@ -40,8 +40,19 @@ export async function GET(req: NextRequest) {
 
   let content = "";
   try {
-    const IyzipayMod = await import("iyzipay");
-    const Iyzipay: any = (IyzipayMod as any).default ?? IyzipayMod;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    let Iyzipay: any;
+    try {
+      // Use require so that a missing package fails at runtime, not at build time
+      Iyzipay = require("iyzipay");
+      if (Iyzipay && Iyzipay.default) Iyzipay = Iyzipay.default;
+    } catch {
+      return NextResponse.json(
+        { error: "iyzipay paketi yüklü değil. Sistem yöneticisiyle iletişime geçin." },
+        { status: 503 }
+      );
+    }
+
     const apiKey = process.env.IYZI_API_KEY || "";
     const secretKey = process.env.IYZI_SECRET_KEY || "";
     const uri = process.env.IYZI_BASE_URL || "https://sandbox-api.iyzipay.com";
