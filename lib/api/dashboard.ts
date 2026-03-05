@@ -159,7 +159,7 @@ export async function getDashboardData(branchId?: string) {
   let trainingsQuery = supabase
     .from("trainings")
     .select(
-      "*, group:groups(id, name), instructor:instructors(full_name, photo_url), venue:venues(name)",
+      "*, group:groups(id, name, tenant_id, branch_id, capacity, status, created_at, updated_at), instructor:instructors(id, full_name, photo_url, tenant_id, status, created_at, updated_at), venue:venues(id, name, tenant_id, is_active, created_at, updated_at)",
     )
     .eq("tenant_id", tenantId)
     .eq("training_date", new Date().toISOString().split("T")[0])
@@ -292,13 +292,41 @@ export async function getDashboardData(branchId?: string) {
     return {
       id: t.id,
       title: t.title,
+      tenantId: t.tenant_id || "",
+      branchId: t.branch_id || "",
       trainingDate: t.training_date,
       startTime: t.start_time,
       endTime: t.end_time,
       status: t.status,
-      venue: t.venue ? { name: t.venue.name } : undefined,
-      instructor: t.instructor ? { fullName: t.instructor.full_name, photoUrl: t.instructor.photo_url } : undefined,
-      group: t.group ? { name: t.group.name } : undefined,
+      createdAt: t.created_at || "",
+      updatedAt: t.updated_at || "",
+      venue: t.venue ? {
+        id: t.venue.id || "",
+        tenantId: t.venue.tenant_id || "",
+        name: t.venue.name,
+        isActive: t.venue.is_active ?? true,
+        createdAt: t.venue.created_at || "",
+        updatedAt: t.venue.updated_at || "",
+      } : undefined,
+      instructor: t.instructor ? {
+        id: t.instructor.id || "",
+        tenantId: t.instructor.tenant_id || "",
+        fullName: t.instructor.full_name,
+        status: t.instructor.status || "active",
+        createdAt: t.instructor.created_at || "",
+        updatedAt: t.instructor.updated_at || "",
+        photoUrl: t.instructor.photo_url,
+      } : undefined,
+      group: t.group ? {
+        id: t.group.id || "",
+        tenantId: t.group.tenant_id || "",
+        branchId: t.group.branch_id || "",
+        name: t.group.name,
+        capacity: t.group.capacity ?? 0,
+        status: t.group.status || "active",
+        createdAt: t.group.created_at || "",
+        updatedAt: t.group.updated_at || "",
+      } : undefined,
       attendanceStats: {
         present: tStats.present,
         absent: tStats.absent,

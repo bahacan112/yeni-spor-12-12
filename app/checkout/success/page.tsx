@@ -12,7 +12,9 @@ interface PaymentDetail {
   tenantId?: string;
 }
 
-export default function SuccessPage() {
+import { Suspense } from "react";
+
+function SuccessPageContent() {
   const sp = useSearchParams();
   const router = useRouter();
   const paymentId = sp.get("paymentId") || "";
@@ -117,3 +119,12 @@ export default function SuccessPage() {
     </div>
   );
 }
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<div>Yükleniyor...</div>}>
+      <SuccessPageContent />
+    </Suspense>
+  );
+}
+

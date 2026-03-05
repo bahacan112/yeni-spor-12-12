@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 
 // Branşlar artık tenant bazlı dinamik yükleniyor
 
-export default function RegistrationPage() {
+function RegistrationPage() {
   const { slug } = useParams() as { slug: string };
   const searchParams = useSearchParams();
   const code = searchParams.get("code") || "";
@@ -542,5 +542,13 @@ export default function RegistrationPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function RegistrationPageWrapper() {
+  return (
+    <Suspense fallback={<div>Yükleniyor...</div>}>
+      <RegistrationPage />
+    </Suspense>
   );
 }

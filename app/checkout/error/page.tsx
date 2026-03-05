@@ -14,7 +14,9 @@ interface PaymentErrorDetail {
   updatedAt?: string;
 }
 
-export default function ErrorPage() {
+import { Suspense } from "react";
+
+function ErrorPageContent() {
   const sp = useSearchParams();
   const router = useRouter();
   const paymentId = sp.get("paymentId") || "";
@@ -125,3 +127,12 @@ export default function ErrorPage() {
     </div>
   );
 }
+
+export default function ErrorPage() {
+  return (
+    <Suspense fallback={<div>Yükleniyor...</div>}>
+      <ErrorPageContent />
+    </Suspense>
+  );
+}
+
