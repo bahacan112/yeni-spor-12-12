@@ -22,14 +22,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ p
   return proxyRequest(req, await params);
 }
 
+// Headers to skip when forwarding
+const SKIP_HEADERS = new Set([
+  'host', 'connection', 'transfer-encoding', 'keep-alive',
+  'origin', 'referer', 'cookie', 'set-cookie',
+]);
+
 async function proxyRequest(req: NextRequest, params: { path: string[] }) {
   const path = params.path.join('/');
   const url = `${NOVU_API_URL}/${path}${req.nextUrl.search}`;
 
+  // Forward ALL headers except problematic ones
   const headers = new Headers();
-  // Forward relevant headers
   for (const [key, value] of req.headers.entries()) {
-    if (['content-type', 'authorization', 'novu-client-version', 'sentry-trace', 'baggage'].includes(key.toLowerCase())) {
+    if (!SKIP_HEADERS.has(key.toLowerCase())) {
       headers.set(key, value);
     }
   }
@@ -41,21 +47,30 @@ async function proxyRequest(req: NextRequest, params: { path: string[] }) {
 
   // Forward body for non-GET requests
   if (req.method !== 'GET' && req.method !== 'HEAD') {
-    fetchOptions.body = await req.text();
+    const body = await req.text();
+    if (body) {
+      fetchOptions.body = body;
+    }
   }
 
   try {
     const res = await fetch(url, fetchOptions);
-    const data = await res.text();
+    
+    // Forward response headers
+    const responseHeaders = new Headers();
+    for (const [key, value] of res.headers.entries()) {
+      if (!SKIP_HEADERS.has(key.toLowerCase())) {
+        responseHeaders.set(key, value);
+      }
+    }
 
+    const data = await res.arrayBuffer();
     return new NextResponse(data, {
       status: res.status,
-      headers: {
-        'content-type': res.headers.get('content-type') || 'application/json',
-      },
+      headers: responseHeaders,
     });
   } catch (error: any) {
-    console.error('[Novu Proxy Error]', error.message);
-    return NextResponse.json({ error: 'Proxy error' }, { status: 502 });
+    console.error('[Novu Proxy Error]', url, error.message);
+    return NextResponse.json({ error: 'Proxy error', detail: error.message }, { status: 502 });
   }
 }
