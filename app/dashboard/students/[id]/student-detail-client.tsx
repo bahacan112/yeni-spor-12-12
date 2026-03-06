@@ -43,6 +43,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { sendDueReminderAction } from "../dues-actions";
+import { BellRing } from "lucide-react";
 
 interface StudentDetailClientProps {
   student: Student;
@@ -550,15 +552,36 @@ export function StudentDetailClient({
                     </div>
                     <div className="flex items-center gap-2">
                       {getDueStatusBadge(due.status)}
+
                       {due.status !== "paid" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs bg-transparent"
-                          onClick={() => handlePayment(due)}
-                        >
-                          Öde
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs bg-transparent"
+                            disabled={!due.id}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const promise = sendDueReminderAction(due.id);
+                              toast.promise(promise, {
+                                loading: "Hatırlatma gönderiliyor...",
+                                success: "Hatırlatma başarıyla gönderildi",
+                                error: (err) => err.message || "Hatırlatma gönderilemedi",
+                              });
+                            }}
+                          >
+                            <BellRing className="mr-1 h-3 w-3" />
+                            Hatırlat
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs bg-transparent"
+                            onClick={() => handlePayment(due)}
+                          >
+                            Öde
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>

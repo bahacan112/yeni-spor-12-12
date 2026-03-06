@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { triggerNotification, WORKFLOWS, upsertSubscriber, applicantSubId } from "@/lib/notifications/novu";
 
 export async function POST(req: NextRequest) {
   try {
@@ -158,9 +159,25 @@ export async function POST(req: NextRequest) {
         ins = await tryInsert(p2);
       }
     }
-    if (ins.error) {
-      return NextResponse.json({ error: ins.error.message }, { status: 400 });
+
+    // Notify Applicant (Novu)
+    try {
+      const subId = applicantSubId((ins.data as any).id);
+      await upsertSubscriber(subId, {
+        email: email || undefined,
+        firstName: fullName,
+        phone: phone || undefined
+      });
+
+      await triggerNotification(WORKFLOWS.APPLICATION_RECEIVED, subId, {
+        fullName: fullName,
+        sportName: sportName || "Spor Branşı",
+        schoolName: tenant.name || "Spor Okulu"
+      });
+    } catch (notifyErr) {
+      console.error("[Application Received Notification Error]", notifyErr);
     }
+
     return NextResponse.json({ ok: true, id: (ins.data as any).id });
   } catch (e: any) {
     return NextResponse.json(

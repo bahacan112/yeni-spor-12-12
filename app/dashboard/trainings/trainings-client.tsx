@@ -40,6 +40,8 @@ import { Training, Instructor, Group, Venue, Branch } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { toast } from "sonner";
+import { updateTrainingAction } from "./training-actions";
+import { saveAttendanceAction } from "./attendance-actions";
 
 interface TrainingsClientProps {
   initialTrainings: Training[];
@@ -342,21 +344,29 @@ export function TrainingsClient({
       .map(([studentId, status]) => ({
         training_id: selectedTrainingForAttendance.id,
         student_id: studentId,
-        status,
+        status: status!,
         marked_at: new Date().toISOString(),
       }));
     if (rows.length === 0) {
       toast.error("Yoklama seçimi yok");
       return;
     }
-    const { error } = await supabase
-      .from("attendance")
-      .upsert(rows, { onConflict: "training_id,student_id" });
-    if (error) {
-      toast.error("Yoklama kaydedilemedi");
+
+    const result = await saveAttendanceAction(
+      selectedTrainingForAttendance.id,
+      rows
+    );
+
+    if (!result.success) {
+      toast.error(result.error || "Yoklama kaydedilemedi");
       return;
     }
-    toast.success("Yoklama kaydedildi");
+
+    if (result.absentCount && result.absentCount > 0) {
+      toast.success(`Yoklama kaydedildi. ${result.absentCount} devamsız öğrenciye bildirim gönderildi.`);
+    } else {
+      toast.success("Yoklama kaydedildi");
+    }
     setIsAttendanceOpen(false);
   };
 
@@ -1022,9 +1032,10 @@ export function TrainingsClient({
                     toast.error("Başlık zorunlu");
                     return;
                   }
-                  const { error } = await supabase
-                    .from("trainings")
-                    .update({
+
+                  const result = await updateTrainingAction(
+                    selectedTrainingForEdit.id,
+                    {
                       title: editTitle,
                       training_date: editTrainingDate,
                       start_time: editStartTime,
@@ -1034,12 +1045,15 @@ export function TrainingsClient({
                       venue_id: editVenueId || null,
                       status: editStatus,
                       notes: editNotes,
-                    })
-                    .eq("id", selectedTrainingForEdit.id);
-                  if (error) {
-                    toast.error("Antrenman güncellenemedi");
+                    },
+                    tenantId
+                  );
+
+                  if (!result.success) {
+                    toast.error(result.error || "Antrenman güncellenemedi");
                     return;
                   }
+
                   toast.success("Antrenman güncellendi");
                   setIsEditOpen(false);
                   location.reload();

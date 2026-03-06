@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import { triggerNotification, WORKFLOWS, upsertSubscriber, customerSubId } from "@/lib/notifications/novu";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -138,6 +139,31 @@ export async function POST(req: NextRequest) {
     });
   }
 
+
+  // Send notification for confirmation
+  try {
+    const subId = customerSubId(customerPhone || customerName);
+    await upsertSubscriber(subId, {
+      firstName: customerName,
+      phone: customerPhone || undefined
+    });
+
+    const { data: venueData } = await supabase
+      .from("venues")
+      .select("name")
+      .eq("id", venueId)
+      .single();
+
+    await triggerNotification(WORKFLOWS.RESERVATION_CONFIRMED, subId, {
+      venueName: venueData?.name || "Saha",
+      date: reservationDate,
+      time: `${startTime} - ${endTime}`,
+      studentName: customerName
+    });
+  } catch (notifyErr) {
+    console.error("[Reservation Notification Error]", notifyErr);
+  }
+
   return NextResponse.json({ success: true, reservation: res });
 }
 
@@ -152,6 +178,31 @@ export async function PATCH(req: NextRequest) {
     .update({ status: status || "cancelled" })
     .eq("id", id);
 
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // If cancelled, trigger notification
+  if (status === "cancelled") {
+    try {
+      const { data: res } = await supabase
+        .from("venue_reservations")
+        .select("*, venues(name)")
+        .eq("id", id)
+        .single();
+      
+      if (res) {
+        const subId = customerSubId(res.customer_phone || res.customer_name);
+        await triggerNotification(WORKFLOWS.RESERVATION_CANCELLED, subId, {
+          venueName: res.venues?.name || "Saha",
+          date: res.reservation_date,
+          time: `${res.start_time} - ${res.end_time}`,
+          studentName: res.customer_name
+        });
+      }
+    } catch (notifyErr) {
+      console.error("[Reservation Cancel Notification Error]", notifyErr);
+    }
+  }
+
   return NextResponse.json({ success: true });
 }

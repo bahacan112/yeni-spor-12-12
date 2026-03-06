@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseService } from "@/lib/supabase/service";
+import { triggerNotification, WORKFLOWS, userSubId, upsertSubscriber } from "@/lib/notifications/novu";
 
 export const runtime = "nodejs";
 
@@ -100,7 +101,25 @@ async function finalize(
     }).eq("id", sub.id);
   }
 
+
   await svc.from("tenants").update({ subscription_status: "active", is_limited: false }).eq("id", tenantId);
+
+  // Notify User about Payment
+  try {
+    const { data: tenant } = await svc.from("tenants").select("name, owner_id").eq("id", tenantId).single();
+    if (tenant?.owner_id) {
+       // Since it's a tenant owner, we use userSubId
+       const subId = userSubId(tenant.owner_id);
+       await triggerNotification(WORKFLOWS.PAYMENT_RECEIVED, subId, {
+         amount: amount,
+         paymentDate: now.toLocaleDateString("tr-TR"),
+         studentName: tenant.name || "Hesap Sahibi", // Reusing field for tenant name
+       });
+    }
+  } catch (notifyErr) {
+    console.error("[Payment Notification Error]", notifyErr);
+  }
+
   const redirect = `${base}/checkout/success?paymentId=${encodeURIComponent(paymentId)}`;
   return NextResponse.redirect(redirect);
 }

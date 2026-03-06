@@ -56,6 +56,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Student, Group, Branch } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { createStudentAction } from "./student-actions";
 
 interface StudentsClientProps {
   initialStudents: Student[];
@@ -236,50 +237,12 @@ export function StudentsClient({
         setIsSubmitting(false);
         return;
       }
-      // 1. Insert student
-      const { data: student, error: studentError } = await supabase
-        .from("students")
-        .insert({
-          tenant_id: tenantId,
-          full_name: formData.fullName,
-          phone: formData.phone,
-          email: formData.email,
-          birth_date: formData.birthDate || null,
-          gender: formData.gender,
-          is_licensed: formData.isLicensed === "true",
-          branch_id: formData.branchId || null,
-          guardian_name: formData.guardianName,
-          guardian_phone: formData.guardianPhone,
-          address: formData.address,
-          notes: formData.notes,
-          status: "active",
-        })
-        .select()
-        .single();
 
-      if (studentError) {
-        throw studentError;
-      }
+      // 1. Create student via Server Action
+      const result = await createStudentAction(formData, tenantId);
 
-      // 2. Insert into group if selected
-      if (formData.groupId && student) {
-        const { error: groupError } = await supabase
-          .from("student_groups")
-          .upsert(
-            {
-              student_id: student.id,
-              group_id: formData.groupId,
-              status: "active",
-              joined_at: new Date().toISOString().split("T")[0],
-              left_at: null,
-            },
-            { onConflict: "student_id,group_id" },
-          );
-
-        if (groupError) {
-          console.error("Error adding student to group:", groupError);
-          toast.error("Grup ataması yapılamadı");
-        }
+      if (!result.success) {
+        throw new Error(result.error || "Öğrenci oluşturulamadı");
       }
 
       // Success

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bell, ChevronDown, Menu, Search } from "lucide-react";
+import { ChevronDown, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -16,6 +16,7 @@ import { useAppStore } from "@/lib/stores/app-store";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { NovuInbox } from "@/components/notifications/novu-inbox";
 
 interface MobileHeaderProps {
   tenantName?: string;
@@ -29,7 +30,6 @@ export function MobileHeader({
   branches = [],
 }: MobileHeaderProps) {
   const { setSidebarOpen } = useAppStore();
-  const [notificationCount] = useState(0); // Reset to 0 or fetch real count
   const {
     currentBranch: storeCurrentBranch,
     branches: storeBranches,
@@ -136,14 +136,7 @@ export function MobileHeader({
           <Search className="h-4 w-4" />
         </Button>
 
-        <Button variant="ghost" size="icon" className="relative h-9 w-9">
-          <Bell className="h-4 w-4" />
-          {notificationCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
-              {notificationCount}
-            </span>
-          )}
-        </Button>
+        <NovuInbox subscriberId={user?.id ? `user-${user.id}` : undefined} />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
