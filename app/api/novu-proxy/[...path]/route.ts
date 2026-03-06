@@ -59,7 +59,22 @@ async function proxyRequest(req: NextRequest, params: { path: string[] }) {
       const bodyText = await clonedReq.text();
       
       if (bodyText) {
-        fetchOptions.body = bodyText;
+        // Fix for @novu/react v3 sending subscriber as object instead of root subscriberId
+        if (url.includes('/v1/inbox/session')) {
+          try {
+            const parsedBody = JSON.parse(bodyText);
+            if (!parsedBody.subscriberId && parsedBody.subscriber?.subscriberId) {
+              parsedBody.subscriberId = parsedBody.subscriber.subscriberId;
+              fetchOptions.body = JSON.stringify(parsedBody);
+            } else {
+              fetchOptions.body = bodyText;
+            }
+          } catch (e) {
+            fetchOptions.body = bodyText;
+          }
+        } else {
+          fetchOptions.body = bodyText;
+        }
       }
     } catch (e) {
       console.error('[Novu Proxy] Body Parsing Error:', e);
