@@ -26,6 +26,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ p
 const SKIP_HEADERS = new Set([
   'host', 'connection', 'transfer-encoding', 'keep-alive',
   'origin', 'referer', 'cookie', 'set-cookie',
+  'content-length', 'accept-encoding' // Let fetch calculate length and handle encoding
 ]);
 
 async function proxyRequest(req: NextRequest, params: { path: string[] }) {
@@ -45,11 +46,11 @@ async function proxyRequest(req: NextRequest, params: { path: string[] }) {
     headers,
   };
 
-  // Forward body for non-GET requests
+  // Forward body safely as arrayBuffer for non-GET requests
   if (req.method !== 'GET' && req.method !== 'HEAD') {
-    const body = await req.text();
-    if (body) {
-      fetchOptions.body = body;
+    const buf = await req.arrayBuffer();
+    if (buf.byteLength > 0) {
+      fetchOptions.body = buf;
     }
   }
 
