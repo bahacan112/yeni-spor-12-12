@@ -12,12 +12,12 @@ interface NovuInboxProps {
 export function NovuInbox({ subscriberId }: NovuInboxProps) {
   const appId = process.env.NEXT_PUBLIC_NOVU_APP_ID;
 
-  // Proxy üzerinden CORS bypass — Next.js rewrites ile aynı domain'den geçiyor
-  const backendUrl = "/novu-api";
-  const wsUrl = "/novu-ws";
+  // API route proxy ile CORS bypass
+  const backendUrl = "/api/novu-proxy";
+  const wsUrl = process.env.NEXT_PUBLIC_NOVU_WS_URL || "https://novu-ws.mysportschool.com";
 
   useEffect(() => {
-    console.log("[NovuInbox] appId:", appId, "subscriberId:", subscriberId, "backendUrl:", backendUrl, "wsUrl:", wsUrl);
+    console.log("[NovuInbox] appId:", appId, "subscriberId:", subscriberId, "backendUrl:", backendUrl);
   }, [appId, subscriberId]);
 
   if (!appId || !subscriberId) {

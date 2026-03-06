@@ -15,6 +15,6 @@ export const config = {
      * - novu-api (Novu API proxy)
      * - novu-ws (Novu WebSocket proxy)
      */
-    '/((?!_next/static|_next/image|favicon.ico|novu-api|novu-ws|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/novu-proxy|novu-api|novu-ws|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
