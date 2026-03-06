@@ -11,13 +11,14 @@ interface NovuInboxProps {
 
 export function NovuInbox({ subscriberId }: NovuInboxProps) {
   const appId = process.env.NEXT_PUBLIC_NOVU_APP_ID;
-  const apiUrl = process.env.NEXT_PUBLIC_NOVU_API_URL || "https://novu-api.mysportschool.com";
 
-  const wsUrl = process.env.NEXT_PUBLIC_NOVU_WS_URL || "https://novu-ws.mysportschool.com";
+  // Proxy üzerinden CORS bypass — Next.js rewrites ile aynı domain'den geçiyor
+  const backendUrl = "/novu-api";
+  const wsUrl = "/novu-ws";
 
   useEffect(() => {
-    console.log("[NovuInbox] appId:", appId, "subscriberId:", subscriberId, "apiUrl:", apiUrl, "wsUrl:", wsUrl);
-  }, [appId, subscriberId, apiUrl, wsUrl]);
+    console.log("[NovuInbox] appId:", appId, "subscriberId:", subscriberId, "backendUrl:", backendUrl, "wsUrl:", wsUrl);
+  }, [appId, subscriberId]);
 
   if (!appId || !subscriberId) {
     return (
@@ -31,7 +32,7 @@ export function NovuInbox({ subscriberId }: NovuInboxProps) {
     <Inbox
       applicationIdentifier={appId}
       subscriberId={subscriberId}
-      backendUrl={apiUrl}
+      backendUrl={backendUrl}
       socketUrl={wsUrl}
     />
   );
