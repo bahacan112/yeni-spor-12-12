@@ -22,56 +22,72 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ p
   return proxyRequest(req, await params);
 }
 
-// Headers to skip when forwarding
+// Headers to explicitly drop to avoid proxy conflicts
 const SKIP_HEADERS = new Set([
-  'host', 'connection', 'transfer-encoding', 'keep-alive',
-  'origin', 'referer', 'cookie', 'set-cookie',
-  'content-length', 'accept-encoding' // Let fetch calculate length and handle encoding
+  'host', 
+  'connection', 
+  'transfer-encoding', 
+  'keep-alive',
+  'origin', 
+  'referer', 
+  'content-length', // Let the fetch API automatically calculate
+  'accept-encoding' // Avoid compressed responses causing issues in the proxy
 ]);
 
 async function proxyRequest(req: NextRequest, params: { path: string[] }) {
   const path = params.path.join('/');
   const url = `${NOVU_API_URL}/${path}${req.nextUrl.search}`;
 
-  // Forward ALL headers except problematic ones
   const headers = new Headers();
-  for (const [key, value] of req.headers.entries()) {
+  req.headers.forEach((value, key) => {
     if (!SKIP_HEADERS.has(key.toLowerCase())) {
       headers.set(key, value);
     }
-  }
+  });
 
   const fetchOptions: RequestInit = {
     method: req.method,
     headers,
+    // Provide a valid cache/duplex option for streaming/fetching
+    cache: 'no-store',
   };
 
-  // Forward body safely as arrayBuffer for non-GET requests
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    const buf = await req.arrayBuffer();
-    if (buf.byteLength > 0) {
-      fetchOptions.body = buf;
+  // Only parse body for allowed methods
+  if (!['GET', 'HEAD'].includes(req.method)) {
+    try {
+      const clonedReq = req.clone(); // Clone safely
+      const bodyText = await clonedReq.text();
+      
+      if (bodyText) {
+        fetchOptions.body = bodyText;
+      }
+    } catch (e) {
+      console.error('[Novu Proxy] Body Parsing Error:', e);
     }
   }
 
   try {
     const res = await fetch(url, fetchOptions);
     
-    // Forward response headers
+    // Copy the target response back to the client
     const responseHeaders = new Headers();
-    for (const [key, value] of res.headers.entries()) {
-      if (!SKIP_HEADERS.has(key.toLowerCase())) {
+    res.headers.forEach((value, key) => {
+      // Don't copy over specific headers that the client fetch should handle natively
+      if (!SKIP_HEADERS.has(key.toLowerCase()) && key.toLowerCase() !== 'content-encoding') {
         responseHeaders.set(key, value);
       }
-    }
+    });
 
-    const data = await res.arrayBuffer();
-    return new NextResponse(data, {
+    const responseBody = await res.arrayBuffer();
+
+    return new NextResponse(responseBody, {
       status: res.status,
+      statusText: res.statusText,
       headers: responseHeaders,
     });
   } catch (error: any) {
-    console.error('[Novu Proxy Error]', url, error.message);
-    return NextResponse.json({ error: 'Proxy error', detail: error.message }, { status: 502 });
+    console.error(`[Novu Proxy Error] ${req.method} ${url}`, error.message);
+    return NextResponse.json({ error: 'Proxy Request Failed', detail: error.message }, { status: 502 });
   }
 }
+
