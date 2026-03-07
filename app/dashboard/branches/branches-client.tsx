@@ -34,6 +34,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/lib/stores/auth-store";
 import { BranchWithCounts } from "@/lib/api/branches";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -45,6 +47,8 @@ export default function BranchesClient({
   branches: BranchWithCounts[];
   tenantId: string;
 }) {
+  const router = useRouter();
+  const { setCurrentBranch } = useAuthStore();
   const supabase = createClient();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
@@ -60,6 +64,12 @@ export default function BranchesClient({
     (acc, b) => acc + (b.instructors || 0),
     0
   );
+
+  const handleBranchClick = (branch: BranchWithCounts) => {
+    setCurrentBranch(branch);
+    router.push(`/dashboard?branch=${branch.id}`);
+    router.refresh(); // Opsiyonel, verilerin güncellenmesi için
+  };
 
   const openNew = () => {
     setEditingBranchId(null);
@@ -272,7 +282,11 @@ export default function BranchesClient({
           </Card>
         ) : (
           branches.map((branch) => (
-            <Card key={branch.id} className="bg-card/50 border-border/50">
+            <Card 
+              key={branch.id} 
+              className="bg-card/50 border-border/50 cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => handleBranchClick(branch)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -298,7 +312,12 @@ export default function BranchesClient({
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

@@ -17,6 +17,7 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { NovuInbox } from "@/components/notifications/novu-inbox";
+import { ModeToggle } from "@/components/mode-toggle";
 
 interface MobileHeaderProps {
   tenantName?: string;
@@ -136,6 +137,7 @@ export function MobileHeader({
           <Search className="h-4 w-4" />
         </Button>
 
+        <ModeToggle />
         <NovuInbox subscriberId={user?.id ? `user-${user.id}` : undefined} />
 
         <DropdownMenu>

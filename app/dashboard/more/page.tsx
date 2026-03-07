@@ -60,27 +60,27 @@ export default function MorePage() {
   return (
     <div className="flex flex-col gap-6 p-4 pb-20">
       <div>
-        <h1 className="text-xl font-bold text-white">Daha Fazla</h1>
+        <h1 className="text-xl font-bold text-foreground">Daha Fazla</h1>
         <p className="text-sm text-muted-foreground">Tüm menü seçenekleri</p>
       </div>
 
       {menuGroups.map((group) => (
         <div key={group.title}>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">{group.title}</h2>
-          <Card className="bg-card border-slate-800">
-            <CardContent className="divide-y divide-slate-800 p-0">
+          <Card className="bg-card border-border">
+            <CardContent className="divide-y divide-border p-0">
               {group.items.map((item) => {
                 const Icon = item.icon
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-slate-800/50"
+                    className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-secondary/50"
                   >
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 ${item.color}`}>
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-secondary ${item.color}`}>
                       <Icon className="h-5 w-5" />
                     </div>
-                    <span className="font-medium text-white">{item.label}</span>
+                    <span className="font-medium text-foreground">{item.label}</span>
                   </Link>
                 )
               })}
@@ -90,13 +90,13 @@ export default function MorePage() {
       ))}
 
       {/* Logout */}
-      <Card className="bg-card border-slate-800">
+      <Card className="bg-card border-border">
         <CardContent className="p-0">
           <Link 
             href="/auth/logout" 
-            className="flex w-full items-center gap-4 px-4 py-3.5 text-red-400 transition-colors hover:bg-slate-800/50"
+            className="flex w-full items-center gap-4 px-4 py-3.5 text-destructive transition-colors hover:bg-destructive/10"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/20">
               <LogOut className="h-5 w-5" />
             </div>
             <span className="font-medium">Çıkış Yap</span>

@@ -139,27 +139,27 @@ export function Sidebar({ tenantName }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-800 bg-slate-900 transition-transform duration-300 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 w-72 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-300 lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Header */}
-        <div className="flex h-14 items-center justify-between border-b border-slate-800 px-4">
+        <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
-              <span className="text-sm font-bold text-white">SA</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+              <span className="text-sm font-bold text-primary-foreground">SA</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-white">
+              <span className="text-sm font-semibold">
                 {tenantName || "Spor Okulu"}
               </span>
-              <span className="text-xs text-slate-400">Yönetim Paneli</span>
+              <span className="text-xs text-muted-foreground">Yönetim Paneli</span>
             </div>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 lg:hidden text-slate-400"
+            className="h-8 w-8 lg:hidden text-muted-foreground"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-4 w-4" />
@@ -179,7 +179,7 @@ export function Sidebar({ tenantName }: SidebarProps) {
                   <button
                     onClick={() => toggleSection(section.title)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-md px-2 py-2 text-xs font-semibold uppercase tracking-wider transition-colors text-slate-500 hover:bg-slate-800 hover:text-white"
+                      "flex w-full items-center justify-between rounded-md px-2 py-2 text-xs font-semibold uppercase tracking-wider transition-colors text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )}
                   >
                     <span>{section.title}</span>
@@ -227,8 +227,8 @@ export function Sidebar({ tenantName }: SidebarProps) {
                           className={cn(
                             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                             isActive
-                              ? "bg-blue-600 text-white"
-                              : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                              : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                           )}
                         >
                           <Icon className="h-4 w-4" />

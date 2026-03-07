@@ -42,6 +42,39 @@ export async function getBranchesData() {
     throw new Error("Failed to fetch branches")
   }
 
+  // Fetch branch stats: Students
+  const { data: studentsData } = await supabase
+    .from("students")
+    .select("branch_id")
+    .eq("tenant_id", tenantId)
+    .eq("status", "active")
+    
+  const branchStudentsCount: Record<string, number> = {}
+  if (studentsData) {
+    studentsData.forEach(s => {
+      branchStudentsCount[s.branch_id] = (branchStudentsCount[s.branch_id] || 0) + 1
+    })
+  }
+  
+  // Fetch branch stats: Instructors (mapped through groups)
+  const { data: groupsData } = await supabase
+    .from("groups")
+    .select("branch_id, instructor_id")
+    .eq("tenant_id", tenantId)
+    .not("instructor_id", "is", null)
+    
+  const branchInstructorsSet: Record<string, Set<string>> = {}
+  if (groupsData) {
+    groupsData.forEach(g => {
+      if (g.instructor_id) {
+        if (!branchInstructorsSet[g.branch_id]) {
+          branchInstructorsSet[g.branch_id] = new Set()
+        }
+        branchInstructorsSet[g.branch_id].add(g.instructor_id)
+      }
+    })
+  }
+
   // Map database fields to TS interface
   const formattedBranches: BranchWithCounts[] = (branches || []).map((branch: any) => ({
     id: branch.id,
@@ -56,8 +89,8 @@ export async function getBranchesData() {
     isActive: branch.is_active,
     createdAt: branch.created_at,
     updatedAt: branch.updated_at,
-    students: 0, // TODO: Implement count fetching
-    instructors: 0 // TODO: Implement count fetching
+    students: branchStudentsCount[branch.id] || 0,
+    instructors: branchInstructorsSet[branch.id]?.size || 0
   }))
 
   return {
