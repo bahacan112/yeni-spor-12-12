@@ -55,38 +55,63 @@ export default function PublicRegistrationPage() {
         .select("*")
         .eq("code", code)
         .single();
+      
+      let linkData = rl;
+
       if (rlErr || !rl) {
-        setError("Kayıt linki bulunamadı");
-        setLoading(false);
-        return;
+        const { data: tenantData } = await supabase
+          .from("tenants")
+          .select("*")
+          .eq("slug", code)
+          .single();
+
+        if (tenantData) {
+          linkData = {
+            id: `generic-${tenantData.id}`,
+            tenant_id: tenantData.id,
+            is_active: true,
+            title: "Genel Kayıt Formu",
+            expires_at: null,
+            branch_id: null,
+            group_id: null,
+          };
+        } else {
+          setError("Kayıt linki bulunamadı");
+          setLoading(false);
+          return;
+        }
       }
-      const isExpired = rl.expires_at
-        ? new Date(rl.expires_at) < new Date()
+
+      const isExpired = linkData.expires_at
+        ? new Date(linkData.expires_at) < new Date()
         : false;
-      if (!rl.is_active) {
+      if (!linkData.is_active) {
         setError("Bu kayıt linki pasif durumda");
-        setLink(rl);
+        setLink(linkData);
         setLoading(false);
         return;
       }
       if (isExpired) {
         setError("Bu kayıt linkinin süresi dolmuş");
-        setLink(rl);
+        setLink(linkData);
         setLoading(false);
         return;
       }
-      setLink(rl);
+      
+      setLink(linkData);
+      
       const { data: t } = await supabase
         .from("tenants")
         .select("id,name,slug,logo_url,primary_color,secondary_color")
-        .eq("id", rl.tenant_id)
+        .eq("id", linkData.tenant_id)
         .single();
       setTenant(t);
+      
       try {
         const { data: sports } = await supabase
           .from("sports")
           .select("id,name")
-          .eq("tenant_id", rl.tenant_id)
+          .eq("tenant_id", linkData.tenant_id)
           .eq("is_active", true)
           .order("sort_order")
           .order("name");
@@ -108,7 +133,7 @@ export default function PublicRegistrationPage() {
     const { error: insErr } = await supabase.from("applications").insert({
       tenant_id: link.tenant_id,
       branch_id: link.branch_id || null,
-      registration_link_id: link.id,
+      registration_link_id: String(link.id).startsWith("generic-") ? null : link.id,
       sport_id: selectedSport || null,
       full_name: form.fullName,
       birth_date: form.birthDate || null,
@@ -251,7 +276,7 @@ export default function PublicRegistrationPage() {
                 <Button
                   className="w-full"
                   size="lg"
-                  disabled={!selectedSport}
+                  disabled={sportsData.length > 0 && !selectedSport}
                   onClick={() => setStep(2)}
                 >
                   Devam Et

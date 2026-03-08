@@ -51,10 +51,24 @@ export function LandingHeader() {
           </Link>
         </div>
 
-        {/* Mobile Menu Button */}
-        <button className="md:hidden text-slate-300" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        {/* Mobile Nav Actions */}
+        <div className="flex items-center gap-3 md:hidden">
+          <Link href="/auth/login" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            Giriş
+          </Link>
+          <Link href="/auth/register">
+            <Button size="sm" className="h-8 px-3 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white border-0">
+              Kayıt Ol
+            </Button>
+          </Link>
+          <button 
+            className="text-slate-300 p-1 -mr-1 transition-colors hover:text-white" 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Menüyü aç/kapat"
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </nav>
 
       {/* Mobile Menu */}
@@ -72,15 +86,8 @@ export function LandingHeader() {
               {link.label}
             </Link>
           ))}
-          <div className="pt-3 border-t border-slate-800 space-y-2">
-            <Link href="/auth/login" className="block">
-              <Button variant="outline" className="w-full border-slate-700 text-slate-300 bg-transparent">
-                Giriş Yap
-              </Button>
-            </Link>
-            <Link href="/auth/register" className="block">
-              <Button className="w-full bg-gradient-to-r from-blue-500 to-cyan-500">Ücretsiz Başla</Button>
-            </Link>
+          <div className="pt-3 border-t border-slate-800 space-y-2 pb-2">
+            {/* Login and Register links are now permanently visible in the header */}
           </div>
         </div>
       </div>

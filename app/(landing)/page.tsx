@@ -8,88 +8,104 @@ import {
   Shield,
   Smartphone,
   Globe,
-  Star,
   Check,
   Play,
+  Building2,
+  Wallet,
+  ClipboardCheck,
+  Link as LinkIcon,
+  Bell,
+  ShoppingBag,
+  Map,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const features = [
   {
     icon: Users,
     title: "Öğrenci Yönetimi",
-    description: "Tüm öğrencilerinizi tek platformda yönetin. Kayıt, devam takibi ve performans analizi.",
+    description: "Tüm öğrencilerinizi tek platformda yönetin. Kapsamlı öğrenci profilleri, iletişim bilgileri ve gelişim raporları.",
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
   },
   {
-    icon: CreditCard,
-    title: "Aidat Takibi",
-    description: "Aylık aidat ödemelerini kolayca takip edin. Otomatik hatırlatmalar gönderin.",
-    color: "text-emerald-500",
-    bgColor: "bg-emerald-500/10",
-  },
-  {
-    icon: Calendar,
-    title: "Antrenman Programı",
-    description: "Antrenman programlarını planlayın ve grupları yönetin. Yoklama alın.",
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-  },
-  {
-    icon: BarChart3,
-    title: "Raporlar & Analiz",
-    description: "Detaylı raporlar ve analizlerle işletmenizi daha iyi anlayın.",
-    color: "text-amber-500",
-    bgColor: "bg-amber-500/10",
-  },
-  {
-    icon: Smartphone,
-    title: "Mobil Uyumlu",
-    description: "Her cihazdan erişim. Mobil-first tasarım ile her yerde yönetim.",
+    icon: LinkIcon,
+    title: "Online Kayıt Linkleri",
+    description: "Web siteniz olmasa bile size özel kayıt linkleri oluşturun, yeni öğrencileri sosyal medya üzerinden kolayca toplayın.",
     color: "text-pink-500",
     bgColor: "bg-pink-500/10",
   },
   {
-    icon: Globe,
-    title: "Web Sitesi",
-    description: "Akademiniz için otomatik web sitesi. Online kayıt ve ürün satışı.",
+    icon: Wallet,
+    title: "Kapsamlı Finans Yönetimi",
+    description: "Sadece aidat takibi değil; genel muhasebe, gelir-gider tabloları ve personel avansları dahil tüm kasanız kontrolünüz altında.",
+    color: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Akıllı Yoklama Modülü",
+    description: "Eğitmenleriniz tablet veya telefondan saniyeler içinde yoklama alabilir, gelmeyen öğrencileri veya izinlileri anında tespit edin.",
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10",
+  },
+  {
+    icon: Building2,
+    title: "Çoklu Şube Merkezi",
+    description: "Farklı lokasyonlardaki şubelerinizi tek bir arayüzden yönetin. Rol bazlı yetkilendirme ile her şubeye kendi yöneticisini atayın.",
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+  },
+  {
+    icon: ShoppingBag,
+    title: "Mağaza & Ürün Satışı",
+    description: "Kulübünüze ait forma, çanta ve antrenman ekipmanlarının stok ve ürün satışını dijital ortama taşıyarak gelirinizi artırın.",
     color: "text-cyan-500",
     bgColor: "bg-cyan-500/10",
   },
-]
-
-const stats = [
-  { value: "500+", label: "Spor Okulu" },
-  { value: "50.000+", label: "Öğrenci" },
-  { value: "₺10M+", label: "Yönetilen Ödeme" },
-  { value: "%99.9", label: "Uptime" },
-]
-
-const testimonials = [
   {
-    name: "Ahmet Yılmaz",
-    role: "Altınşehir Spor Akademisi",
-    content: "SporYonetim sayesinde 300 öğrencimizi çok daha kolay yönetiyoruz. Aidat takibi artık baş ağrısı değil.",
-    avatar: "/male-coach-portrait.jpg",
-    rating: 5,
+    icon: Bell,
+    title: "Gerçek Zamanlı Bildirimler",
+    description: "Gecikmiş aidat hatırlatmaları, ders iptalleri veya önemli duyuruları uygulama içi ve harici (push/sms) bildirimlerle hızlıca velilere ulaştırın.",
+    color: "text-rose-500",
+    bgColor: "bg-rose-500/10",
   },
   {
-    name: "Fatma Demir",
-    role: "Yüzme Akademisi",
-    content: "Eğitmenlerimiz kendi panellerinden yoklama alabiliyor. Veli memnuniyeti çok arttı.",
-    avatar: "/female-swimming-coach.jpg",
-    rating: 5,
+    icon: Calendar,
+    title: "Dinamik Antrenman Takvimi",
+    description: "Saha veya salon çakışmalarını engelleyen akıllı takvim yapısıyla gruplarınızı profesyonelce planlayın.",
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-500/10",
   },
   {
-    name: "Mehmet Kaya",
-    role: "Basketbol Kulübü",
-    content: "Çoklu şube desteği mükemmel. 5 şubemizi tek panelden yönetiyoruz.",
-    avatar: "/basketball-coach.png",
-    rating: 5,
+    icon: Shield,
+    title: "Rol Bazlı Güvenlik",
+    description: "Sistemde kimin ne görebileceğini kesin olarak belirleyin. Eğitmenler sadece kendi gruplarını görürken yöneticiler büyük resmi izler.",
+    color: "text-teal-500",
+    bgColor: "bg-teal-500/10",
+  },
+  {
+    icon: Map,
+    title: "Saha & Tesis Kiralama",
+    description: "Halı saha, tenis kortu veya kapalı spor salonu gibi tesislerinizin saatlik rezervasyonlarını ve kiralama ücretlerini yönetin.",
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10",
+  },
+  {
+    icon: BarChart3,
+    title: "Gelişmiş Raporlama",
+    description: "Gelir-gider analizlerinden, öğrenci devamlılık istatistiklerine kadar işletmenizin performansını detaylı grafiklerle tek ekranda görün.",
+    color: "text-sky-500",
+    bgColor: "bg-sky-500/10",
+  },
+  {
+    icon: Smartphone,
+    title: "Mobil Uyumlu Kullanım",
+    description: "Tesis dışında bile olun, akıllı telefonlardan tam uyumlu arayüzle işletmenizi cepten kolayca kontrol edin.",
+    color: "text-violet-500",
+    bgColor: "bg-violet-500/10",
   },
 ]
 
@@ -151,20 +167,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 border-y border-slate-800 bg-slate-900/30">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-3xl sm:text-4xl font-bold text-white">{stat.value}</p>
-                <p className="mt-1 text-sm text-slate-400">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Features Section */}
       <section className="py-20 sm:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -190,46 +192,6 @@ export default function HomePage() {
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
                   <p className="text-slate-400">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-20 sm:py-32 bg-slate-900/30">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-purple-500/10 text-purple-400 border-purple-500/20">Kullanıcı Yorumları</Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white text-balance">500+ spor okulu bize güveniyor</h2>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            {testimonials.map((testimonial) => (
-              <Card key={testimonial.name} className="bg-slate-900/50 border-slate-800">
-                <CardContent className="p-6">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-amber-500 text-amber-500" />
-                    ))}
-                  </div>
-                  <p className="text-slate-300 mb-6">&quot;{testimonial.content}&quot;</p>
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={testimonial.avatar || "/placeholder.svg"} />
-                      <AvatarFallback className="bg-slate-700 text-white">
-                        {testimonial.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-white">{testimonial.name}</p>
-                      <p className="text-sm text-slate-400">{testimonial.role}</p>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             ))}

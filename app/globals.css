@@ -143,3 +143,50 @@
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* Novu Inbox - Kanal etiketlerini Türkçeye çevirme
+   Novu kaynak kodunda bu etiketler hardcoded olduğu için
+   CSS ile override edilmektedir. */
+label[for="email"],
+label[for="in_app"],
+label[for="push"],
+label[for="sms"],
+label[for="chat"] {
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+label[for="email"]::after {
+  content: "E-posta";
+  font-size: 0.875rem;
+  line-height: normal;
+  font-weight: 600;
+}
+
+label[for="in_app"]::after {
+  content: "Uygulama İçi";
+  font-size: 0.875rem;
+  line-height: normal;
+  font-weight: 600;
+}
+
+label[for="push"]::after {
+  content: "Anlık Bildirim";
+  font-size: 0.875rem;
+  line-height: normal;
+  font-weight: 600;
+}
+
+label[for="sms"]::after {
+  content: "SMS";
+  font-size: 0.875rem;
+  line-height: normal;
+  font-weight: 600;
+}
+
+label[for="chat"]::after {
+  content: "Sohbet";
+  font-size: 0.875rem;
+  line-height: normal;
+  font-weight: 600;
+}

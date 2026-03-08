@@ -58,7 +58,7 @@ export function RecentApplications({ applications }: RecentApplicationsProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-5 w-5 text-green-500" />
-            Son Başvurular
+            Öğrenci Kayıt Başvuruları
           </CardTitle>
           <Link href="/dashboard/applications">
             <Button variant="ghost" size="sm" className="h-7 text-xs">
