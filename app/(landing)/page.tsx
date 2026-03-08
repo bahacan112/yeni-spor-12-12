@@ -109,6 +109,13 @@ const features = [
   },
 ]
 
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Yeni Spor Okulu | Spor Akademisi ve Kulüp Yönetim Yazılımı",
+  description: "Öğrenci kaydı, aidat takibi, çoklu şube yönetimi ve antrenman planlama özellikleriyle spor akademinizi tek bir platformdan, profesyonelce yönetin.",
+}
+
 export default function HomePage() {
   return (
     <div className="relative">

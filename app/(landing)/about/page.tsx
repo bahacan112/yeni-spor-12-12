@@ -52,6 +52,13 @@ const milestones = [
   { year: "2024", title: "500+ Müşteri", description: "500 spor okuluna ulaştık" },
 ]
 
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Hakkımızda",
+  description: "Yeni Spor Okulu'nun hikayesi, ekibimiz, hedeflerimiz ve değerlerimiz. Spor akademilerinin dijital dönüşümüne nasıl öncülük ettiğimizi öğrenin.",
+}
+
 export default function AboutPage() {
   return (
     <div className="relative">

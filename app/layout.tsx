@@ -9,9 +9,56 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Spor Akademi - Yönetim Paneli",
-  description: "Multi-tenant spor salonu yönetim sistemi",
-  generator: "v0.app",
+  title: {
+    default: "Yeni Spor Okulu | Spor Akademisi ve Kulüp Yönetim Yazılımı",
+    template: "%s | Yeni Spor Okulu",
+  },
+  description: "Spor okulları, yüzme kursları, basketbol akademileri ve stüdyolar için öğrenci kayıt, tahsilat, yoklama, antrenman planlama ve şube yönetim sistemi.",
+  keywords: [
+    "spor okulu yazılımı",
+    "spor kulübü programı",
+    "aidat takip sistemi",
+    "yoklama programı",
+    "kulüp yönetim sistemi",
+    "antrenman programı",
+    "spor akademisi uygulaması",
+    "şube yönetim sistemi",
+  ],
+  authors: [{ name: "Yeni Spor Okulu Yazılımı" }],
+  creator: "Yeni Spor Okulu",
+  openGraph: {
+    type: "website",
+    locale: "tr_TR",
+    url: "https://yenisporokulu.com", // Replace with real URL when available
+    title: "Yeni Spor Okulu | Spor Akademisi Yönetim Yazılımı",
+    description: "Öğrenci kaydı, aidat takibi, şube yönetimi ve online kayıt linkleri ile spor okulunuzu dijitalleştirin ve profesyonelce yönetin.",
+    siteName: "Yeni Spor Okulu",
+    images: [
+      {
+        url: "/modern-dark-dashboard-ui-for-sports-academy-manage.jpg", // The dashboard preview or logo works here
+        width: 1200,
+        height: 630,
+        alt: "Spor Okulu Yönetim Ekranı",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Yeni Spor Okulu | Spor Akademisi Yönetim Yazılımı",
+    description: "Spor okulları, kulüpler ve akademiler için hepsi bir arada yönetim platformu.",
+    images: ["/modern-dark-dashboard-ui-for-sports-academy-manage.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   icons: {
     icon: [
       {

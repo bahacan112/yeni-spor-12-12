@@ -146,14 +146,9 @@ export function Sidebar({ tenantName }: SidebarProps) {
         {/* Header */}
         <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">SA</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold">
-                {tenantName || "Spor Okulu"}
-              </span>
-              <span className="text-xs text-muted-foreground">Yönetim Paneli</span>
+            <div className="flex flex-col justify-center">
+              <img src="/logo.png" alt="Logo" className="h-8 w-auto object-contain" />
+              <span className="text-[11px] text-muted-foreground mt-1 font-medium tracking-wide">YÖNETİM PANELİ</span>
             </div>
           </div>
           <Button

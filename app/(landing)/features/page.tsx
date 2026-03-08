@@ -160,6 +160,13 @@ const additionalFeatures = [
   { icon: Check, title: "Eğitmen Yönetimi", description: "Tüm antrenörlerin görevlerini ve bağlı oldukları grupları sisteme girin." },
 ]
 
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Özellikler",
+  description: "Öğrenci yönetimi, akıllı yoklama, finans takibi, online kayıt linkleri ve çok daha fazlası. Yeni Spor Okulu'nun tüm özelliklerini inceleyin.",
+}
+
 export default function FeaturesPage() {
   return (
     <div className="relative">
